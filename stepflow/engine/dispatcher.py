@@ -3,13 +3,14 @@ from stepflow.states.pass_state import execute_pass
 from stepflow.states.task_state import execute_task
 from stepflow.states.succeed_state import execute_succeed
 from stepflow.states.fail_state import execute_fail
-
+from stepflow.states.choice_state import execute_choice
 # 将状态类型映射到具体执行函数
 STATE_EXECUTORS = {
     "Pass": execute_pass,
     "Task": execute_task,
     "Succeed": execute_succeed,
-    "Fail": execute_fail
+    "Fail": execute_fail,
+    "Choice": execute_choice,
 }
 
 def get_state_executor(state_type: str):

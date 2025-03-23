@@ -8,6 +8,7 @@ app = FastAPI(
     title="StepFlow",
     version="0.1.0",
     description="A Step Functions-like workflow engine with FastAPI",
+    debug=True
 )
 
 # 挂载路由
