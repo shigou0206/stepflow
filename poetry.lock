@@ -311,6 +311,70 @@ files = [
 ]
 
 [[package]]
+name = "jsonata"
+version = "0.2.5"
+description = "A simple Python wrapper for the JavaScript JSONata lib."
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "jsonata-0.2.5-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:81e29c3010e6bba0f74f339e865b781da23b647330947f50d69788c6b63f0d0d"},
+    {file = "jsonata-0.2.5-cp310-cp310-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:40c445d03cb2bf05944a800192c76a7a4cdbccb2c20d07331975b9b3201311cb"},
+    {file = "jsonata-0.2.5-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:881f10790ae77f7ad622d6e070ec9ca4440a4767e7e9876bc73d73f124dbfe12"},
+    {file = "jsonata-0.2.5-cp310-cp310-musllinux_1_1_i686.whl", hash = "sha256:76d2ee1031f7f827190a7ab0f8a470349857f1bf7cc18ed1c33a09b5290d294e"},
+    {file = "jsonata-0.2.5-cp310-cp310-musllinux_1_1_x86_64.whl", hash = "sha256:725f15538ec1bb8137b0289b2d4873ad2ce01a25b76af0eec3804f502364693c"},
+    {file = "jsonata-0.2.5-cp310-cp310-win32.whl", hash = "sha256:bc9b1dc835fc8d97680d12997f9b76fed7b427c7251e80da65e5a9addafd04de"},
+    {file = "jsonata-0.2.5-cp310-cp310-win_amd64.whl", hash = "sha256:0550c0a794fea8e7fd3da19d730abff91c3c34d2ad6f60b7b86561a37bf62d9e"},
+    {file = "jsonata-0.2.5-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:48c2d84b30bf737b8ea6ae54be862b500f90cd76605beb04d7e4f2cd62eb7b90"},
+    {file = "jsonata-0.2.5-cp311-cp311-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:1e587eb1680041295f47eaef595c05c699f11c635323c643ef6e75ed9960edff"},
+    {file = "jsonata-0.2.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c55a54921a753e09f646577c5e4c00e732f621c11509c2cc7fe0f32f238ba747"},
+    {file = "jsonata-0.2.5-cp311-cp311-musllinux_1_1_i686.whl", hash = "sha256:b2119d3459e82dc56c7054990b776733b8020e56f873d7c0a22e93e9de712886"},
+    {file = "jsonata-0.2.5-cp311-cp311-musllinux_1_1_x86_64.whl", hash = "sha256:a0ccd12ecab0ddf7b5a415b1042db57aeb6a7f78299ab227ee94a0f89438d6af"},
+    {file = "jsonata-0.2.5-cp311-cp311-win32.whl", hash = "sha256:af48322afcdc1c93ff3a478fbf76e09a0d018fd90b30eac7d14773b5ac888c1b"},
+    {file = "jsonata-0.2.5-cp311-cp311-win_amd64.whl", hash = "sha256:5966ec5218b6b1b53103175b8c662280a2ac112742c29989b535175eec0f9cca"},
+    {file = "jsonata-0.2.5-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:59f3ea6583f34ef316bd966a1d1ae9eeb90329140a757e415b11dcb359a27ca0"},
+    {file = "jsonata-0.2.5-cp36-cp36m-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:75d472c5eac4e8d28f67f11255f4dcf012650674a3cd72f26fcd7df29bb86ab4"},
+    {file = "jsonata-0.2.5-cp36-cp36m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d25cfba049dc3600d30156028d063ff4d03a2abf3e3b8845304a79e81a929eda"},
+    {file = "jsonata-0.2.5-cp36-cp36m-musllinux_1_1_i686.whl", hash = "sha256:d0ef83f35c184a525ad52a1d487c3bd4cbf2546598751a7dd501e2e474abf146"},
+    {file = "jsonata-0.2.5-cp36-cp36m-musllinux_1_1_x86_64.whl", hash = "sha256:f72cb51e35ad254440908b236b774b3d94d02442a082b2da6e6304d8c78dceab"},
+    {file = "jsonata-0.2.5-cp36-cp36m-win32.whl", hash = "sha256:2d415b9b3aed376abf793f5140091a6e62f6247c165bec78fe3655735063ed0c"},
+    {file = "jsonata-0.2.5-cp36-cp36m-win_amd64.whl", hash = "sha256:0711c52e7328b3f3e6e14597ec7ae52fbcc0b31d170f34f6a60d4ea46fb95e03"},
+    {file = "jsonata-0.2.5-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:084f7a599e008b3a9edeaa12130b9b13273965ad27bab2d24aad6687a4a53337"},
+    {file = "jsonata-0.2.5-cp37-cp37m-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:10a600b655838d54351dc43b6619c1e870cfadc282a5bc712b6af3783e3bf3fb"},
+    {file = "jsonata-0.2.5-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3fd4facba4115c48d070b47dcc37e7262e5c318bfd4a69ea20339ee964a70643"},
+    {file = "jsonata-0.2.5-cp37-cp37m-musllinux_1_1_i686.whl", hash = "sha256:19f1fb7cc7501793444f56cec54999007f82998f4a4d9af1f20ef9afa1525a5e"},
+    {file = "jsonata-0.2.5-cp37-cp37m-musllinux_1_1_x86_64.whl", hash = "sha256:ee177063ffc57536234d98ddbfce37522d3e56a2190dc8d72f235319326e0d27"},
+    {file = "jsonata-0.2.5-cp37-cp37m-win32.whl", hash = "sha256:7a0722379087b86b252fdd73ee2a749155e72da3746e6b0cd2fc2fd58e4bc118"},
+    {file = "jsonata-0.2.5-cp37-cp37m-win_amd64.whl", hash = "sha256:d5099caafc8f3c0a6e5ef36481bb4c744f1f69982b8287bca8d88655ac4df379"},
+    {file = "jsonata-0.2.5-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:c721eef821ca526d94dafdc6493ec0780475a8129d4788b1d651839af2feed16"},
+    {file = "jsonata-0.2.5-cp38-cp38-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:102e954efc943eec5e51b8b46c1d0a10edc688f6d3893db7112d9fc83c13a08b"},
+    {file = "jsonata-0.2.5-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6c8f0a4712b044821d81e1fdb7bffc452a3e8c59b4b3dba4b3a43dd2a5876a0d"},
+    {file = "jsonata-0.2.5-cp38-cp38-musllinux_1_1_i686.whl", hash = "sha256:7f99e63ca0d9012dda2bc8e56b2f03dfc0ec784475ebe1373af23335a63fe2ee"},
+    {file = "jsonata-0.2.5-cp38-cp38-musllinux_1_1_x86_64.whl", hash = "sha256:48459c80ee0c3c1caaceab22f53cff8d133c4fcb619c93f04e97e2a01a4d9cb5"},
+    {file = "jsonata-0.2.5-cp38-cp38-win32.whl", hash = "sha256:bd5f874de782550375cd464b006e52b9bfc9b6860ff86bee2bc0b520aee06c7f"},
+    {file = "jsonata-0.2.5-cp38-cp38-win_amd64.whl", hash = "sha256:d2a50cd65cf153a2f7a32e74f074e2c388e9dba911cc227b8a5a991db49a6701"},
+    {file = "jsonata-0.2.5-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:241efd94dc487ae1295f3373b5aa83996360fcc154d2c73052d721cdeda2e6c3"},
+    {file = "jsonata-0.2.5-cp39-cp39-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:408746605d7ac531c0452fb690af8794c4a1baa399def5ad3f2b4d11429bfe42"},
+    {file = "jsonata-0.2.5-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b8df9654daebe5d23584527a26003311c91efc9d626a7af8f3c53d55a1392af6"},
+    {file = "jsonata-0.2.5-cp39-cp39-musllinux_1_1_i686.whl", hash = "sha256:7753f320ff82d10e4f15324eb99a75736acc0b3dbc76743f6b875b3491c5bb67"},
+    {file = "jsonata-0.2.5-cp39-cp39-musllinux_1_1_x86_64.whl", hash = "sha256:c03da800165055a0f12616c6e873c30dbf153427dd93fda058e17160bda6b263"},
+    {file = "jsonata-0.2.5-cp39-cp39-win32.whl", hash = "sha256:22c1707b79031de3605a37f4f2872668643187731b5c63597f704d253473aed5"},
+    {file = "jsonata-0.2.5-cp39-cp39-win_amd64.whl", hash = "sha256:c617e819efc0f8d545b77e5860c0101982a4b1094f17ff57a0ca527cf91437b7"},
+    {file = "jsonata-0.2.5-pp37-pypy37_pp73-macosx_10_9_x86_64.whl", hash = "sha256:c0166a28fd3bdf5eb40440113545be077305a2e0595c9364ca1416c83b326f47"},
+    {file = "jsonata-0.2.5-pp37-pypy37_pp73-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:d7f8ebc3581affe37c111898d99f80368910e324703ce3b90b72c30f30ad5603"},
+    {file = "jsonata-0.2.5-pp37-pypy37_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:dbe7f38ec9e56517de2f88d98240ab354a8650eef482e9396ae5290d43667a6a"},
+    {file = "jsonata-0.2.5-pp37-pypy37_pp73-win_amd64.whl", hash = "sha256:0c61b7b673aa10636fb335c275bbace667a4409ceb7de5d05262bcbb07af3c52"},
+    {file = "jsonata-0.2.5-pp38-pypy38_pp73-macosx_10_9_x86_64.whl", hash = "sha256:66ae21aea665ebd20cf2d8d4be68d0468dffd79a8cc2b26827265f252dc679f3"},
+    {file = "jsonata-0.2.5-pp38-pypy38_pp73-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:69c34c5ac0145437aa9a97819a7247aeb7d901f2a73025327091084c89a68f08"},
+    {file = "jsonata-0.2.5-pp38-pypy38_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:cc31fb7a3b06d7080d886015081729caed2d8235cc4d7ad3d7ed6c2cd26c3812"},
+    {file = "jsonata-0.2.5-pp38-pypy38_pp73-win_amd64.whl", hash = "sha256:89d626be711af99db63e3db99cc5f1bfd5e9b838bdf5549683f91b8c1fba6c65"},
+    {file = "jsonata-0.2.5-pp39-pypy39_pp73-macosx_10_9_x86_64.whl", hash = "sha256:0bab7fb0660b7e9d344606db8dbe8abdc41c9661321f973a875ae4cb3ed5b97c"},
+    {file = "jsonata-0.2.5-pp39-pypy39_pp73-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:78c4579236a65047ba1bdefef08444e069c3c48222d64ed56b2a657e5dd054f0"},
+    {file = "jsonata-0.2.5-pp39-pypy39_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6bf2d446d4ce9c775353beb7f4df97819298341e649d31f4738a934dafc11028"},
+    {file = "jsonata-0.2.5-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:f246b5903a640acbc6d26304439986466378ccb523e2f7977679b3843a044b25"},
+    {file = "jsonata-0.2.5.tar.gz", hash = "sha256:71c85d307c619ce646303cd6a819aaac27c79a581ef64bd8b9e6bcb2f73f034d"},
+]
+
+[[package]]
 name = "packaging"
 version = "24.2"
 description = "Core utilities for Python packages"
@@ -681,4 +745,4 @@ standard = ["colorama (>=0.4)", "httptools (>=0.6.3)", "python-dotenv (>=0.13)",
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.13"
-content-hash = "700753eb5c86c66e5b04005f550320f32a4b5125ff7fe3ee34d8b5d9d21852cd"
+content-hash = "cd6334b14427309182a95854c9fd36ae5986871885e219d8237387abcfee1e2b"

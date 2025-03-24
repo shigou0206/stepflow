@@ -1,6 +1,8 @@
 # stepflow/resources/shell_exec.py
+from .registry import resource
 import subprocess
 
+@resource("shell.exec")
 def run(params: dict, context: dict) -> dict:
     """
     最简单的示例: 直接执行shell命令.
