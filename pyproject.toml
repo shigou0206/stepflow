@@ -5,10 +5,21 @@ description = ""
 authors = ["Zhihao Liu <liuzhihao0206@gmail.com>"]
 readme = "README.md"
 
+packages = [
+    { include = "stepflow" }
+]
+
 [tool.poetry.dependencies]
 python = "^3.13"
 alembic = "^1.15.2"
-
+sqlalchemy = "^2.0.40"
+fastapi = "^0.115.12"
+pytest = "^8.3.5"
+aiosqlite = "^0.21.0"
+pytest-asyncio = "^0.26.0"
+pytz = "^2025.2"
+greenlet = "^3.1.1"
+aiohttp = "^3.11.14"
 
 [build-system]
 requires = ["poetry-core"]
