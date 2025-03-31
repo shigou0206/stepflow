@@ -1,8 +1,9 @@
 # stepflow/application/workflow_execution_service.py
 
 import uuid
+import json
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict
 from stepflow.infrastructure.models import WorkflowExecution
 from stepflow.infrastructure.repositories.workflow_execution_repository import WorkflowExecutionRepository
 
@@ -10,17 +11,33 @@ class WorkflowExecutionService:
     def __init__(self, repo: WorkflowExecutionRepository):
         self.repo = repo
 
-    async def start_workflow(self, workflow_id: str, shard_id: int, workflow_type: str) -> WorkflowExecution:
+    async def start_workflow(
+        self,
+        template_id: str,
+        workflow_id: Optional[str] = None,
+        shard_id: int = 1,
+        workflow_type: str = "DefaultFlow",
+        initial_input: Optional[Dict] = None
+    ) -> WorkflowExecution:
         """
         启动一个新的工作流执行, 并返回该记录
         """
         run_id = str(uuid.uuid4())
+
+        if not workflow_id:
+            workflow_id = f"wf-{uuid.uuid4()}"  # 或自行指定
+
+        # 如果 initial_input 是 dict，就转成 JSON字符串以存储
+        input_str = json.dumps(initial_input) if initial_input else None
+
         wf_exec = WorkflowExecution(
             run_id=run_id,
+            template_id=template_id,       # 新增: 记录用哪个模板
             workflow_id=workflow_id,
             shard_id=shard_id,
             status="running",
             workflow_type=workflow_type,
+            input=input_str,               # 存储启动数据
             start_time=datetime.now(),
         )
         return await self.repo.create(wf_exec)
