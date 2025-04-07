@@ -18,6 +18,9 @@ from stepflow.interfaces.api.workflow_event_endpoints import router as event_rou
 from stepflow.interfaces.api.activity_endpoints import router as activity_router
 from stepflow.interfaces.api.timer_endpoints import router as timer_router
 
+# 导入 WebSocket 路由
+from stepflow.interfaces.websocket.routes import router as websocket_router
+
 # 导入 Worker 协程函数
 from stepflow.worker.activity_worker import run_activity_worker
 from stepflow.worker.timer_worker import run_timer_worker
@@ -68,6 +71,7 @@ app.include_router(template_router)
 app.include_router(event_router)
 app.include_router(activity_router)
 app.include_router(timer_router)
+app.include_router(websocket_router)
 
 # 配置工作器数量
 NUM_WORKERS = int(os.environ.get("NUM_ACTIVITY_WORKERS", "2"))

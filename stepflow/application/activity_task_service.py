@@ -5,6 +5,7 @@ from datetime import datetime, UTC
 from typing import Optional, List
 from stepflow.infrastructure.models import ActivityTask
 from stepflow.infrastructure.repositories.activity_task_repository import ActivityTaskRepository
+from stepflow.interfaces.websocket.connection_manager import manager
 
 class ActivityTaskService:
     def __init__(self, repo: ActivityTaskRepository):
@@ -42,7 +43,7 @@ class ActivityTaskService:
         return await self.repo.update(task)
 
     async def complete_task(self, task_token: str, result_data: str) -> Optional[ActivityTask]:
-        """完成一个活动任务"""
+        """完成一个活动任务并发送 WebSocket 通知"""
         task = await self.repo.get_by_token(task_token)
         if not task or task.status != "running":
             return None
@@ -50,10 +51,21 @@ class ActivityTaskService:
         task.status = "completed"
         task.result = result_data
         task.completed_at = datetime.now(UTC)
-        return await self.repo.update(task)
+        updated_task = await self.repo.update(task)
+        
+        # 发送 WebSocket 通知
+        await manager.send_to_workflow(task.run_id, {
+            "type": "task_completed",
+            "run_id": task.run_id,
+            "task_token": task_token,
+            "activity_type": task.activity_type,
+            "timestamp": datetime.now(UTC).isoformat()
+        })
+        
+        return updated_task
 
     async def fail_task(self, task_token: str, reason: str, details: Optional[str] = None) -> Optional[ActivityTask]:
-        """标记一个活动任务为失败，并更新工作流状态"""
+        """标记一个活动任务为失败，更新工作流状态，并发送 WebSocket 通知"""
         task = await self.repo.get_by_token(task_token)
         if not task or task.status != "running":
             return None
@@ -66,6 +78,16 @@ class ActivityTaskService:
         
         # 更新任务状态
         updated_task = await self.repo.update(task)
+        
+        # 发送 WebSocket 通知
+        await manager.send_to_workflow(task.run_id, {
+            "type": "task_failed",
+            "run_id": task.run_id,
+            "task_token": task_token,
+            "activity_type": task.activity_type,
+            "reason": reason,
+            "timestamp": datetime.now(UTC).isoformat()
+        })
         
         # 通知执行引擎任务失败
         # 使用延迟导入避免循环依赖

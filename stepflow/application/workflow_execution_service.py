@@ -2,10 +2,11 @@
 
 import uuid
 import json
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional, List, Dict
 from stepflow.infrastructure.models import WorkflowExecution
 from stepflow.infrastructure.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from stepflow.interfaces.websocket.connection_manager import manager
 
 class WorkflowExecutionService:
     def __init__(self, repo: WorkflowExecutionRepository):
@@ -78,3 +79,27 @@ class WorkflowExecutionService:
 
     async def list_by_status(self, status: str) -> List[WorkflowExecution]:
         return await self.repo.list_by_status(status)
+
+    async def update_status(self, run_id: str, status: str, result: Optional[str] = None) -> Optional[WorkflowExecution]:
+        """更新工作流执行状态并发送 WebSocket 通知"""
+        execution = await self.repo.get_by_run_id(run_id)
+        if not execution:
+            return None
+        
+        execution.status = status
+        if status in ["completed", "failed", "canceled"]:
+            execution.end_time = datetime.now(UTC)
+        if result:
+            execution.result = result
+        
+        updated = await self.repo.update(execution)
+        
+        # 发送 WebSocket 通知
+        await manager.send_to_workflow(run_id, {
+            "type": "status_update",
+            "run_id": run_id,
+            "status": status,
+            "timestamp": datetime.now(UTC).isoformat()
+        })
+        
+        return updated
