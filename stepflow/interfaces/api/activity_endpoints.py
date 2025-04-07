@@ -1,12 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from stepflow.infrastructure.database import get_db_session
 from stepflow.infrastructure.models import ActivityTask
 from stepflow.infrastructure.repositories.activity_task_repository import ActivityTaskRepository
 from stepflow.application.activity_task_service import ActivityTaskService
+from stepflow.interfaces.api.schemas import (
+    ActivityTaskResponse,
+    CompleteRequest,
+    FailRequest,
+    HeartbeatRequest
+)
 
 router = APIRouter(
     prefix="/activity_tasks",
@@ -21,13 +28,12 @@ class ActivityTaskDTO(BaseModel):
     seq: int
     activity_type: str
     status: str
-    result: Optional[str]
-    started_at: Optional[datetime]
-    completed_at: Optional[datetime]
-    heartbeat_at: Optional[datetime]
-
-    class Config:
-        orm_mode = True  # 允许直接从 SQLAlchemy model 转
+    result: Optional[str] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    heartbeat_at: Optional[datetime] = None
+    
+    model_config = ConfigDict(from_attributes=True)
 
 @router.get("/", response_model=List[ActivityTaskDTO])
 async def list_all_tasks(db=Depends(get_db_session)):
@@ -50,68 +56,81 @@ async def get_task(task_token: str, db=Depends(get_db_session)):
         raise HTTPException(status_code=404, detail="Task not found")
     return task
 
-@router.get("/run/{run_id}", response_model=List[ActivityTaskDTO])
-async def list_tasks_for_run(run_id: str, db=Depends(get_db_session)):
+@router.get("/run/{run_id}", response_model=List[ActivityTaskResponse])
+async def get_tasks_by_run_id(
+    run_id: str,
+    db: AsyncSession = Depends(get_db_session)
+):
     """
-    列出同一工作流里的所有 Task
+    获取特定工作流执行的活动任务
     """
     repo = ActivityTaskRepository(db)
-    tasks = await repo.list_by_run_id(run_id)
+    svc = ActivityTaskService(repo)
+    tasks = await svc.get_tasks_by_run_id(run_id)
     return tasks
-
-class CompleteRequest(BaseModel):
-    result_data: str
 
 @router.post("/{task_token}/start")
 async def start_task(task_token: str, db=Depends(get_db_session)):
     """
-    手动将活动任务从 'scheduled' 改为 'running'
+    开始一个活动任务
     """
     repo = ActivityTaskRepository(db)
     svc = ActivityTaskService(repo)
-    ok = await svc.start_task(task_token)
-    if not ok:
-        raise HTTPException(status_code=400, detail="Cannot start task. Maybe not in 'scheduled' state.")
-    return {"status":"ok","message":"Task started"}
+    task = await svc.start_task(task_token)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found or cannot start")
+    return {"status": "ok", "message": f"Task {task_token} started"}
 
 @router.post("/{task_token}/complete")
 async def complete_task(task_token: str, req: CompleteRequest, db=Depends(get_db_session)):
     """
-    手动完成任务, 并写入 result
+    完成一个活动任务，提供结果数据
     """
     repo = ActivityTaskRepository(db)
     svc = ActivityTaskService(repo)
-    ok = await svc.complete_task(task_token, req.result_data)
-    if not ok:
-        raise HTTPException(status_code=400, detail="Cannot complete task. Maybe not in 'running' state.")
-    return {"status":"ok","message":"Task completed"}
-
-class FailRequest(BaseModel):
-    reason: str
+    task = await svc.complete_task(task_token, req.result_data)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found or cannot complete")
+    
+    # 推进工作流执行
+    from stepflow.domain.engine.execution_engine import advance_workflow
+    await advance_workflow(db, task.run_id)
+    
+    return {"status": "ok", "message": f"Task {task_token} completed"}
 
 @router.post("/{task_token}/fail")
 async def fail_task(task_token: str, req: FailRequest, db=Depends(get_db_session)):
     """
-    手动将任务标记为 failed, 并记录失败原因
+    标记一个活动任务为失败
     """
     repo = ActivityTaskRepository(db)
     svc = ActivityTaskService(repo)
-    ok = await svc.fail_task(task_token, req.reason)
-    if not ok:
-        raise HTTPException(status_code=400, detail="Cannot fail task.")
-    return {"status":"ok","message":"Task failed"}
+    task = await svc.fail_task(task_token, req.reason, req.details)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found or cannot fail")
+    
+    # 更新工作流执行状态为失败
+    from stepflow.infrastructure.repositories.workflow_execution_repository import WorkflowExecutionRepository
+    exec_repo = WorkflowExecutionRepository(db)
+    wf_exec = await exec_repo.get_by_run_id(task.run_id)
+    if wf_exec:
+        wf_exec.status = "failed"
+        wf_exec.result = f"Activity task failed: {req.reason}"
+        await exec_repo.update(wf_exec)
+    
+    return {"status": "ok", "message": f"Task {task_token} failed"}
 
 @router.post("/{task_token}/heartbeat")
-async def heartbeat_task(task_token: str, db=Depends(get_db_session)):
+async def heartbeat_task(task_token: str, req: HeartbeatRequest, db=Depends(get_db_session)):
     """
-    更新 heartbeart, 用于长时间运行或定期告知 Worker 仍在执行
+    发送活动任务心跳
     """
     repo = ActivityTaskRepository(db)
     svc = ActivityTaskService(repo)
-    ok = await svc.heartbeat_task(task_token)
-    if not ok:
-        raise HTTPException(status_code=400, detail="Cannot heartbeat. Task not in 'running'?")
-    return {"status":"ok","message":"heartbeat updated"}
+    task = await svc.heartbeat_task(task_token, req.details if hasattr(req, 'details') else None)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return {"status": "ok", "message": f"Heartbeat received for task {task_token}"}
 
 @router.delete("/{task_token}")
 async def delete_task(task_token: str, db=Depends(get_db_session)):

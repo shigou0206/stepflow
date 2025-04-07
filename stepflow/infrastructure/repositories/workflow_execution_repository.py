@@ -54,3 +54,7 @@ class WorkflowExecutionRepository:
         stmt = select(WorkflowExecution).where(WorkflowExecution.status == status)
         result = await self.db.execute(stmt)
         return result.scalars().all()
+
+    async def get_by_id(self, run_id: str) -> Optional[WorkflowExecution]:
+        """兼容方法，调用 get_by_run_id"""
+        return await self.get_by_run_id(run_id)

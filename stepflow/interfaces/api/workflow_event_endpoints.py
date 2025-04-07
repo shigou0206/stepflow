@@ -1,14 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Optional, List
 from datetime import datetime
+from pydantic import BaseModel, ConfigDict
 
 from stepflow.infrastructure.database import get_db_session
 from stepflow.infrastructure.models import WorkflowEvent
 from stepflow.infrastructure.repositories.workflow_event_repository import WorkflowEventRepository
 from stepflow.application.workflow_event_service import WorkflowEventService
-from pydantic import BaseModel
 
 router = APIRouter(prefix="/workflow_events", tags=["workflow_events"])
+
+class RecordEventRequest(BaseModel):
+    run_id: str
+    shard_id: int
+    event_id: int
+    event_type: str
+    attributes: str = "{}"
+    archived: bool = False
 
 class WorkflowEventDTO(BaseModel):
     id: int
@@ -19,9 +27,8 @@ class WorkflowEventDTO(BaseModel):
     attributes: str
     archived: bool
     timestamp: datetime
-
-    class Config:
-        orm_mode = True
+    
+    model_config = ConfigDict(from_attributes=True)
 
 @router.get("/", response_model=List[WorkflowEventDTO])
 async def list_all_events(db=Depends(get_db_session)):
@@ -57,14 +64,6 @@ async def get_event(db_id: int, db=Depends(get_db_session)):
     if not evt:
         raise HTTPException(status_code=404, detail="Event not found")
     return evt
-
-class RecordEventRequest(BaseModel):
-    run_id: str
-    shard_id: int
-    event_id: int
-    event_type: str
-    attributes: str = "{}"
-    archived: bool = False
 
 @router.post("/", response_model=WorkflowEventDTO)
 async def record_event(req: RecordEventRequest, db=Depends(get_db_session)):

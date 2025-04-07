@@ -61,3 +61,9 @@ class ActivityTaskRepository:
         stmt = select(ActivityTask).where(ActivityTask.status == status)
         result = await self.db.execute(stmt)
         return result.scalars().all()
+
+    async def get_by_token(self, task_token: str) -> Optional[ActivityTask]:
+        """根据任务令牌获取任务"""
+        stmt = select(ActivityTask).where(ActivityTask.task_token == task_token)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()

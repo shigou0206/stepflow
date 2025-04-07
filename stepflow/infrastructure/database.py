@@ -19,13 +19,22 @@ async_engine = create_async_engine(
     DATABASE_URL,
     echo=False,  # 需要查看SQL可设True
     future=True,
+    # 增加连接池大小
+    pool_size=20,
+    max_overflow=40,
+    # 设置连接超时
+    pool_timeout=30,
+    # 启用连接池预热
+    pool_pre_ping=True,
     # connect_args={"check_same_thread": False}, # aiosqlite时一般不必
 )
 
 AsyncSessionLocal = sessionmaker(
     bind=async_engine,
     expire_on_commit=False,
-    class_=AsyncSession
+    class_=AsyncSession,
+    # 添加自动刷新
+    autoflush=True
 )
 
 Base = declarative_base()
@@ -43,3 +52,6 @@ async def get_db_session():
             yield db
         finally:
             await db.close()
+
+# 确保这个变量被定义
+SQLALCHEMY_DATABASE_URL = "sqlite:///stepflow.db"

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
-from typing import Optional, List
+from pydantic import BaseModel, ConfigDict
+from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
 from sqlalchemy.orm import Session
 
@@ -9,14 +9,26 @@ from stepflow.infrastructure.repositories.activity_task_repository import Activi
 from stepflow.infrastructure.database import get_db_session
 from stepflow.infrastructure.models import WorkflowExecution, ActivityTask
 from stepflow.application.workflow_execution_service import WorkflowExecutionService
+from stepflow.application.workflow_template_service import WorkflowTemplateService
+from stepflow.infrastructure.repositories.workflow_template_repository import WorkflowTemplateRepository
 from stepflow.domain.engine.execution_engine import advance_workflow
 
-router = APIRouter(prefix="/executions", tags=["workflow_executions"])
+router = APIRouter(prefix="/workflow_executions", tags=["workflow_executions"])
 
 class StartExecutionRequest(BaseModel):
     template_id: str
     workflow_id: Optional[str] = None
-    input: Optional[dict] = None   # 初始输入(可选)
+    input: Optional[Dict[str, Any]] = None
+
+class ExecutionResponse(BaseModel):
+    run_id: str
+    workflow_id: str
+    template_id: str
+    status: str
+    start_time: datetime
+    close_time: Optional[datetime] = None
+    
+    model_config = ConfigDict(from_attributes=True)
 
 @router.post("/")
 async def start_workflow(req: StartExecutionRequest, db: Session = Depends(get_db_session)):

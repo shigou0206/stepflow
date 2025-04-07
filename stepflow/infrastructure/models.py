@@ -5,8 +5,9 @@ from sqlalchemy import (
     Column, String, Integer, Text, ForeignKey, DateTime, Boolean,
     Index, text
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, declarative_base
 from .database import Base
+from datetime import datetime
 
 # -----------------------
 # workflow_templates

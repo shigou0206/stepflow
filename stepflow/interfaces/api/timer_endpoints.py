@@ -2,12 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 from datetime import datetime
 import uuid
+from pydantic import BaseModel, ConfigDict
 
 from stepflow.infrastructure.database import get_db_session
 from stepflow.infrastructure.models import Timer
 from stepflow.infrastructure.repositories.timer_repository import TimerRepository
 from stepflow.application.timer_service import TimerService
-from pydantic import BaseModel
 
 router = APIRouter(prefix="/timers", tags=["timers"])
 
@@ -17,9 +17,8 @@ class TimerDTO(BaseModel):
     shard_id: int
     fire_at: datetime
     status: str
-
-    class Config:
-        orm_mode = True
+    
+    model_config = ConfigDict(from_attributes=True)
 
 class ScheduleTimerRequest(BaseModel):
     run_id: str
