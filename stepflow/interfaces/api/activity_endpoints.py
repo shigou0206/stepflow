@@ -35,12 +35,9 @@ class ActivityTaskDTO(BaseModel):
     
     model_config = ConfigDict(from_attributes=True)
 
-@router.get("/", response_model=List[ActivityTaskDTO])
-async def list_all_tasks(db=Depends(get_db_session)):
-    """
-    列出全部 ActivityTask (仅供调试/测试).
-    实际生产中可能要加分页/过滤.
-    """
+@router.get("/", response_model=List[ActivityTaskResponse])
+async def list_all_tasks(db: AsyncSession = Depends(get_db_session)):
+    """列出所有活动任务"""
     repo = ActivityTaskRepository(db)
     tasks = await repo.list_all()
     return tasks

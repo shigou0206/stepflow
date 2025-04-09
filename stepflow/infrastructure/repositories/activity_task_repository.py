@@ -67,3 +67,8 @@ class ActivityTaskRepository:
         stmt = select(ActivityTask).where(ActivityTask.task_token == task_token)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def list_all(self) -> List[ActivityTask]:
+        """列出所有活动任务"""
+        result = await self.db.execute(select(ActivityTask))
+        return result.scalars().all()

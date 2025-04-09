@@ -6,9 +6,13 @@ from .http_tool import HttpTool
 
 # 你也可以 import 其他 tool，比如 EmailTool、DBTool 等
 
+# 检查工具注册表
+
+# 工具注册表
 tool_registry = {
-    "shell": ShellTool(),   # activity_type="shell" 时调用此对象
-    "http": HttpTool(),     # activity_type="http"  时调用此对象
-    # "email": EmailTool(),
-    # ...
+    "HttpTool": HttpTool(),
+    "ShellTool": ShellTool(),
+    "http_tool": HttpTool(),
+    "shell_tool": ShellTool(),
+    # 其他工具...
 }

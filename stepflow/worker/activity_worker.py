@@ -78,77 +78,45 @@ async def process_tasks_concurrently(tasks: List[ActivityTask]) -> None:
 
 async def process_activity_task(task: ActivityTask):
     """处理单个活动任务"""
-    logger.info(f"处理活动任务: {task.task_token}, 类型: {task.activity_type}")
+    service = ActivityTaskService(ActivityTaskRepository(AsyncSessionLocal()))
     
-    # 创建服务和仓库
-    async with AsyncSessionLocal() as session:
-        repo = ActivityTaskRepository(session)
-        service = ActivityTaskService(repo)
+    try:
+        # 1) 标记为开始执行
+        await service.start_task(task.task_token)
         
-        # 重新获取任务以确保状态最新
-        task = await repo.get_by_token(task.task_token)
-        if not task or task.status != "running":
-            logger.warning(f"任务 {task.task_token} 状态不是 running，跳过处理")
-            return
+        # 2) 解析输入参数
+        input_data = json.loads(task.input) if task.input else {}
         
+        # 3) 获取活动类型并执行
         activity_type = task.activity_type
-        tool = tool_registry.get(activity_type)
         
+        # 从工具注册表中获取对应的工具
+        tool = tool_registry.get(activity_type)
         if not tool:
-            # 未知类型 => 标记为失败
-            logger.error(f"未找到活动类型 {activity_type} 的工具")
-            await service.fail_task(
-                task.task_token, 
-                reason=f"Unknown activity type: {activity_type}"
-            )
-            return
+            raise ValueError(f"Unknown activity type: {activity_type}")
+        
+        # 执行工具
+        logger.info(f"执行活动任务: {task.task_token}, 类型: {activity_type}")
+        result = await tool.execute(input_data)
+        
+        # 4) 标记为完成
+        result_data = result if isinstance(result, dict) else {"result": result}
+        await service.complete_task(
+            task.task_token,
+            result_data=json.dumps(result_data)
+        )
+        
+        # 通知引擎 => 让 workflow 往下走
+        await call_advance_workflow(task.run_id)
 
-        # 解析输入数据
-        input_data = {}
-        if task.input:
-            try:
-                input_data = json.loads(task.input)
-            except json.JSONDecodeError as e:
-                logger.error(f"解析任务输入数据失败: {str(e)}")
-                await service.fail_task(
-                    task.task_token, 
-                    reason=f"Invalid input data: {str(e)}"
-                )
-                return
-
-        try:
-            # 执行工具
-            result_data = await tool.run(input_data)
-            
-            # 检查工具执行结果是否包含错误
-            if isinstance(result_data, dict) and (result_data.get("error") or result_data.get("ok") is False):
-                # 如果工具执行失败，标记任务为失败
-                error_message = result_data.get("error", "Unknown error")
-                logger.warning(f"工具执行失败: {error_message}")
-                await service.fail_task(
-                    task.task_token, 
-                    reason=f"Tool execution failed: {error_message}",
-                    details=json.dumps(result_data)
-                )
-            else:
-                # 工具执行成功，完成任务
-                logger.info(f"工具执行成功，完成任务 {task.task_token}")
-                await service.complete_task(
-                    task.task_token,
-                    result_data=json.dumps(result_data)
-                )
-                
-                # 通知引擎 => 让 workflow 往下走
-                await call_advance_workflow(task.run_id)
-
-        except Exception as e:
-            logger.exception(f"处理活动任务 {task.task_token} 时出错: {str(e)}")
-            # 标记任务为失败
-            await service.fail_task(
-                task.task_token,
-                reason=f"Exception during task execution: {str(e)}",
-                details=traceback.format_exc()
-            )
+    except Exception as e:
+        logger.exception(f"处理活动任务 {task.task_token} 时出错: {str(e)}")
+        # 标记任务为失败
+        await service.fail_task(
+            task.task_token,
+            reason=f"Exception during task execution: {str(e)}",
+            details=traceback.format_exc()
+        )
 
 async def call_advance_workflow(run_id: str):
     """让引擎推进下一个节点"""
