@@ -30,71 +30,48 @@ class ActivityTaskService:
 
     async def get_tasks_by_run_id(self, run_id: str) -> List[ActivityTask]:
         """获取特定工作流执行的所有活动任务"""
-        return await self.repo.list_by_run_id(run_id)
+        return await self.repo.get_by_run_id(run_id)
 
-    async def start_task(self, task_token: str) -> Optional[ActivityTask]:
-        """开始一个活动任务"""
+    async def get_scheduled_tasks(self, limit: int = 10) -> List[ActivityTask]:
+        """获取待处理的任务"""
+        return await self.repo.get_by_status("scheduled", limit)
+
+    async def mark_tasks_as_running(self, task_tokens: List[str]) -> None:
+        """标记任务为运行中"""
+        for token in task_tokens:
+            await self.repo.update_status(token, "running")
+
+    async def start_task(self, task_token: str) -> None:
+        """标记任务为开始执行"""
         task = await self.repo.get_by_token(task_token)
-        if not task or task.status != "scheduled":
-            return None
+        if not task:
+            raise ValueError(f"Task with token {task_token} not found")
         
-        task.status = "running"
         task.started_at = datetime.now(UTC)
-        return await self.repo.update(task)
+        await self.repo.save(task)
 
-    async def complete_task(self, task_token: str, result_data: str) -> Optional[ActivityTask]:
-        """完成一个活动任务并发送 WebSocket 通知"""
+    async def complete_task(self, task_token: str, result_data: str) -> None:
+        """标记任务为完成"""
         task = await self.repo.get_by_token(task_token)
-        if not task or task.status != "running":
-            return None
+        if not task:
+            raise ValueError(f"Task with token {task_token} not found")
         
         task.status = "completed"
-        task.result = result_data
         task.completed_at = datetime.now(UTC)
-        updated_task = await self.repo.update(task)
-        
-        # 发送 WebSocket 通知
-        await manager.send_to_workflow(task.run_id, {
-            "type": "task_completed",
-            "run_id": task.run_id,
-            "task_token": task_token,
-            "activity_type": task.activity_type,
-            "timestamp": datetime.now(UTC).isoformat()
-        })
-        
-        return updated_task
+        task.result = result_data
+        await self.repo.save(task)
 
-    async def fail_task(self, task_token: str, reason: str, details: Optional[str] = None) -> Optional[ActivityTask]:
-        """标记一个活动任务为失败，更新工作流状态，并发送 WebSocket 通知"""
+    async def fail_task(self, task_token: str, reason: str, details: str = None) -> None:
+        """标记任务为失败"""
         task = await self.repo.get_by_token(task_token)
-        if not task or task.status != "running":
-            return None
+        if not task:
+            raise ValueError(f"Task with token {task_token} not found")
         
         task.status = "failed"
-        task.result = f"Failed: {reason}"
-        if details:
-            task.result += f" - Details: {details}"
         task.completed_at = datetime.now(UTC)
-        
-        # 更新任务状态
-        updated_task = await self.repo.update(task)
-        
-        # 发送 WebSocket 通知
-        await manager.send_to_workflow(task.run_id, {
-            "type": "task_failed",
-            "run_id": task.run_id,
-            "task_token": task_token,
-            "activity_type": task.activity_type,
-            "reason": reason,
-            "timestamp": datetime.now(UTC).isoformat()
-        })
-        
-        # 通知执行引擎任务失败
-        # 使用延迟导入避免循环依赖
-        from stepflow.domain.engine.execution_engine import handle_activity_task_failed
-        await handle_activity_task_failed(task_token, reason, details)
-        
-        return updated_task
+        task.error = reason  # 确保错误原因被保存
+        task.error_details = details  # 确保错误详情被保存
+        await self.repo.save(task)
 
     async def heartbeat_task(self, task_token: str, details: Optional[str] = None) -> Optional[ActivityTask]:
         """更新活动任务心跳"""

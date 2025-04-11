@@ -59,7 +59,7 @@ try:
     from stepflow.worker.tools.tool_registry import tool_registry
     
     # 测试不同的活动类型名称
-    test_types = ["HttpTool", "http_tool", "HTTP_TOOL", "httptool", "ShellTool", "shell_tool"]
+    test_types = ["HttpTool", "ShellTool"]
     
     for activity_type in test_types:
         tool = tool_registry.get(activity_type)

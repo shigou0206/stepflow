@@ -3,6 +3,8 @@ from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from stepflow.infrastructure.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from stepflow.infrastructure.repositories.activity_task_repository import ActivityTaskRepository
@@ -73,23 +75,46 @@ async def get_execution(run_id: str, db: Session = Depends(get_db_session)):
         "memo": wf.memo,
     }
 
-@router.get("/{run_id}/tasks")
-async def list_tasks_for_run(run_id: str, db: Session = Depends(get_db_session)):
-    repo = ActivityTaskRepository(db)
-    tasks = await repo.list_by_run_id(run_id)
-    result_list = []
-    for t in tasks:
-        result_list.append({
-            "task_token": t.task_token,
-            "activity_type": t.activity_type,
-            "status": t.status,
-            "seq": t.seq,
-            "result": t.result,
-            "scheduled_at": t.scheduled_at,
-            "started_at": t.started_at,
-            "completed_at": t.completed_at
-        })
-    return result_list
+@router.get("/{run_id}/tasks", response_model=List[Dict[str, Any]])
+async def get_workflow_execution_tasks(run_id: str, db: AsyncSession = Depends(get_db_session)):
+    """获取工作流执行的所有活动任务"""
+    # 查询活动任务
+    stmt = select(ActivityTask).where(ActivityTask.run_id == run_id)
+    result = await db.execute(stmt)
+    tasks = result.scalars().all()
+    
+    # 转换为响应格式
+    response = []
+    for task in tasks:
+        task_data = {
+            "task_token": task.task_token,
+            "run_id": task.run_id,
+            "activity_type": task.activity_type,
+            "status": task.status,
+            "scheduled_at": task.scheduled_at,
+            "started_at": task.started_at,
+            "completed_at": task.completed_at,
+        }
+        
+        # 添加输入（如果有）
+        if task.input:
+            task_data["input"] = task.input
+        
+        # 添加结果（如果有）
+        if task.result:
+            task_data["result"] = task.result
+        
+        # 添加错误信息（如果有）
+        if task.error:
+            task_data["error"] = task.error
+        
+        # 添加错误详情（如果有）
+        if task.error_details:
+            task_data["error_details"] = task.error_details
+        
+        response.append(task_data)
+    
+    return response
 
 @router.delete("/{run_id}")
 async def cancel_workflow(run_id: str, db: Session = Depends(get_db_session)):

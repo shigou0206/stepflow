@@ -12,7 +12,7 @@ from stepflow.domain.dsl_model import (
     WorkflowDSL, StateUnion, TaskState, ChoiceState,
     WaitState, ParallelState, PassState, FailState, SucceedState
 )
-from stepflow.domain.engine.path_utils import get_value_by_path, set_value_by_path
+from stepflow.domain.engine.path_utils import get_value_by_path, set_value_by_path, resolve_path_references, merge_with_path_references
 
 from stepflow.infrastructure.models import (
     WorkflowExecution, WorkflowTemplate, ActivityTask, WorkflowEvent,
@@ -85,102 +85,68 @@ async def advance_workflow(db: AsyncSession, run_id: str) -> None:
     await db.commit()
 
 async def handle_task_state(db: AsyncSession, wf_exec: WorkflowExecution, dsl: WorkflowDSL, state_def: TaskState):
+    """处理任务状态节点"""
     # 读取上下文
     memo_json = json.loads(wf_exec.memo) if wf_exec.memo else {}
-    node_input = get_value_by_path(memo_json, state_def.InputPath)
-
-    # 查询是否已存在活动任务
-    stmt = select(ActivityTask).where(
-        ActivityTask.run_id == wf_exec.run_id,
-        ActivityTask.activity_type == state_def.ActivityType
+    
+    # 获取输入参数
+    input_data = {}
+    
+    # 1. 首先从 InputPath 获取输入
+    if hasattr(state_def, 'InputPath') and state_def.InputPath:
+        input_data = get_value_by_path(memo_json, state_def.InputPath) or {}
+        logger.debug(f"从 InputPath {state_def.InputPath} 获取输入: {input_data}")
+    
+    # 2. 然后处理 Parameters
+    if hasattr(state_def, 'Parameters') and state_def.Parameters:
+        # 如果有 Parameters，使用它们替换或扩展输入
+        if isinstance(state_def.Parameters, dict):
+            # 解析 Parameters 中的路径引用
+            parameters = merge_with_path_references(state_def.Parameters, memo_json)
+            logger.debug(f"解析后的参数: {parameters}")
+            
+            # 更新输入数据
+            if isinstance(input_data, dict):
+                input_data.update(parameters)
+            else:
+                input_data = parameters
+        else:
+            logger.warning(f"Parameters 不是字典: {state_def.Parameters}")
+    
+    # 转换为 JSON 字符串
+    input_json = json.dumps(input_data)
+    logger.debug(f"最终输入参数: {input_json}")
+    
+    # 创建活动任务
+    task_token = str(uuid.uuid4())
+    new_task = ActivityTask(
+        task_token=task_token,
+        run_id=wf_exec.run_id,
+        activity_type=state_def.ActivityType,
+        status="scheduled",
+        input=input_json,
+        scheduled_at=datetime.now(UTC)
     )
-    result = await db.execute(stmt)
-    act_task: ActivityTask = result.scalar_one_or_none()
-
-    if not act_task:
-        # 还没调度 => 创建, status='scheduled'
-        from uuid import uuid4
-        new_token = str(uuid4())
-        act_task = ActivityTask(
-            task_token=new_token,
-            run_id=wf_exec.run_id,
-            shard_id=wf_exec.shard_id,
-            activity_type=state_def.ActivityType,
-            status="scheduled",
-            input=json.dumps(node_input),
-            scheduled_at=datetime.now(UTC)
-        )
-        db.add(act_task)
-
-        # 记事件
-        new_evt = WorkflowEvent(
-            run_id=wf_exec.run_id,
-            shard_id=wf_exec.shard_id,
-            event_id=0,
-            event_type="ActivityTaskScheduled",
-            attributes=json.dumps({"activity_type": state_def.ActivityType})
-        )
-        db.add(new_evt)
-
-        await db.commit()  # 提交
-        return  # 等外部回调 => 下次 advance_workflow
-
-    # 如果找到, 看其 status
-    if act_task.status == "running":
-        # 还没完成 => 先不推进
-        return
-    elif act_task.status == "completed":
-        # 拿 result
-        result_data = {}
-        if act_task.result:
-            result_data = json.loads(act_task.result)
-
-        # 合并 => ResultPath
-        merged = set_value_by_path(memo_json, state_def.ResultPath, result_data)
-        # => OutputPath
-        out_data = get_value_by_path(merged, state_def.OutputPath)
-        if not isinstance(out_data, dict):
-            out_data = {"value": out_data}
-        wf_exec.memo = json.dumps(out_data)
-
-        # 结束 or Next
-        if state_def.End:
-            wf_exec.status = "completed"
-            wf_exec.close_time = datetime.now(UTC)
-            new_evt = WorkflowEvent(
-                run_id=wf_exec.run_id,
-                shard_id=wf_exec.shard_id,
-                event_id=0,
-                event_type="WorkflowExecutionCompleted"
-            )
-            db.add(new_evt)
-        elif state_def.Next:
-            wf_exec.current_state_name = state_def.Next
-            evt = WorkflowEvent(
-                run_id=wf_exec.run_id,
-                shard_id=wf_exec.shard_id,
-                event_id=0,
-                event_type="TaskStateFinished",
-                attributes=json.dumps({"next": state_def.Next})
-            )
-            db.add(evt)
-        # else => error?
-    elif act_task.status == "failed":
-        # 看 Retry/Catch or fail
-        # 简化: 直接 fail
-        wf_exec.status = "failed"
-        wf_exec.close_time = datetime.now(UTC)
-        fail_evt = WorkflowEvent(
-            run_id=wf_exec.run_id,
-            shard_id=wf_exec.shard_id,
-            event_id=0,
-            event_type="ActivityTaskFailed"
-        )
-        db.add(fail_evt)
-    # 其余: timed_out, canceled...
-
+    db.add(new_task)
+    
+    # 记录事件
+    new_evt = WorkflowEvent(
+        run_id=wf_exec.run_id,
+        event_type="ACTIVITY_SCHEDULED",
+        event_time=datetime.now(UTC),
+        attributes=json.dumps({
+            "activity_type": state_def.ActivityType,
+            "task_token": task_token
+        })
+    )
+    db.add(new_evt)
+    
+    # 更新工作流状态
+    wf_exec.current_state_name = state_def.Name
+    
     # 提交
     await db.commit()
+    logger.info(f"已调度活动任务: {task_token}, 类型: {state_def.ActivityType}")
 
 async def handle_choice_state(db: AsyncSession, wf_exec: WorkflowExecution, dsl: WorkflowDSL, state_def: ChoiceState):
     memo_json = json.loads(wf_exec.memo) if wf_exec.memo else {}

@@ -9,7 +9,7 @@ class ITool(ABC):
     """
 
     @abstractmethod
-    async def run(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
         执行某种操作（Shell、HTTP、REST...），
         传入 input_data (JSON dict),

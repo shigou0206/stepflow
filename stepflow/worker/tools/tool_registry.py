@@ -12,7 +12,5 @@ from .http_tool import HttpTool
 tool_registry = {
     "HttpTool": HttpTool(),
     "ShellTool": ShellTool(),
-    "http_tool": HttpTool(),
-    "shell_tool": ShellTool(),
     # 其他工具...
 }

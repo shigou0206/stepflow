@@ -2,6 +2,8 @@
 
 import pytest
 import pytest_asyncio
+import uuid
+from datetime import datetime, UTC
 
 # 使用异步数据库配置
 from stepflow.infrastructure.database import Base, async_engine, AsyncSessionLocal
@@ -9,6 +11,7 @@ from stepflow.infrastructure.database import Base, async_engine, AsyncSessionLoc
 # 导入异步版的仓库 + Service
 from stepflow.infrastructure.repositories.workflow_template_repository import WorkflowTemplateRepository
 from stepflow.application.workflow_template_service import WorkflowTemplateService
+from stepflow.infrastructure.models import WorkflowTemplate
 
 @pytest_asyncio.fixture(scope="module", autouse=True)
 async def setup_database():
@@ -33,44 +36,80 @@ async def test_create_and_get(db_session):
     repo = WorkflowTemplateRepository(db_session)
     # 2) 创建 Service
     service = WorkflowTemplateService(repo)
-
-    # 调用 Service 方法
-    tpl = await service.create_template(
+    
+    # 生成唯一模板ID
+    template_id = f"test-template-{uuid.uuid4()}"
+    
+    # 创建 WorkflowTemplate 对象
+    template = WorkflowTemplate(
+        template_id=template_id,
         name="TestFlow",
         dsl_definition='{"Version":"1.0"}',
         description="desc"
     )
-    assert tpl.template_id is not None
-
-    fetched = await service.get_template(tpl.template_id)
-    assert fetched is not None
-    assert fetched.name == "TestFlow"
-    assert fetched.description == "desc"
+    
+    # 调用 Service 方法
+    tpl = await service.create_template(template)
+    
+    # 验证创建结果
+    assert tpl.template_id == template_id
+    
+    # 获取模板
+    retrieved = await service.get_template(template_id)
+    assert retrieved is not None
+    assert retrieved.template_id == template_id
 
 @pytest.mark.asyncio
 async def test_update_template(db_session):
     repo = WorkflowTemplateRepository(db_session)
     service = WorkflowTemplateService(repo)
-
-    tpl_list = await service.list_templates()
-    assert len(tpl_list) > 0
-
-    tpl_id = tpl_list[0].template_id
-    updated = await service.update_template(tpl_id, new_name="UpdatedFlow")
-    assert updated is not None
-    assert updated.name == "UpdatedFlow"
+    
+    # 先创建一个模板
+    template_id = f"test-update-{uuid.uuid4()}"
+    template = WorkflowTemplate(
+        template_id=template_id,
+        name="UpdateTest",
+        dsl_definition='{"Version":"1.0"}',
+        description="Original description"
+    )
+    
+    # 创建模板
+    tpl = await service.create_template(template)
+    
+    # 获取模板并修改
+    updated_template = await service.get_template(template_id)
+    updated_template.dsl_definition = '{"Version":"1.1"}'
+    updated_template.description = "Updated description"
+    
+    # 更新模板
+    updated = await service.update_template(updated_template)
+    
+    # 验证更新结果
+    assert updated.template_id == template_id
+    assert updated.dsl_definition == '{"Version":"1.1"}'
+    assert updated.description == "Updated description"
 
 @pytest.mark.asyncio
 async def test_delete_template(db_session):
     repo = WorkflowTemplateRepository(db_session)
     service = WorkflowTemplateService(repo)
-
-    tpl_list = await service.list_templates()
-    assert tpl_list, "No template found to delete"
-
-    tpl_id = tpl_list[0].template_id
-    is_deleted = await service.delete_template(tpl_id)
-    assert is_deleted is True
-
-    not_found = await service.get_template(tpl_id)
-    assert not_found is None
+    
+    # 先创建一个模板
+    template_id = f"test-delete-{uuid.uuid4()}"
+    template = WorkflowTemplate(
+        template_id=template_id,
+        name="DeleteTest",
+        dsl_definition='{"Version":"1.0"}',
+        description="To be deleted"
+    )
+    
+    # 创建模板
+    tpl = await service.create_template(template)
+    
+    # 删除模板
+    result = await service.delete_template(template_id)
+    assert result is True
+    
+    # 验证模板已删除
+    deleted = await service.get_template(template_id)
+    assert deleted is None

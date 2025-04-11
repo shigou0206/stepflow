@@ -15,9 +15,9 @@ from datetime import datetime
 class WorkflowTemplate(Base):
     __tablename__ = "workflow_templates"
 
-    template_id = Column(String(36), primary_key=True)
-    name = Column(String(255), nullable=False)
-    description = Column(Text)
+    template_id = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    description = Column(String)
     dsl_definition = Column(Text, nullable=False)
     version = Column(Integer, nullable=False, server_default=text("1"))
     created_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
@@ -109,14 +109,14 @@ class ActivityTask(Base):
 
     task_token = Column(String(36), primary_key=True)
     run_id = Column(String(36), ForeignKey("workflow_executions.run_id"), nullable=False)
-    shard_id = Column(Integer, nullable=False)
-    seq = Column(Integer, nullable=False, server_default=text("1"))
+    shard_id = Column(Integer, nullable=False, default=0)
+    seq = Column(Integer, nullable=False, default=0)
     activity_type = Column(String(255), nullable=False)
-    input = Column(Text)           # JSON -> TEXT
-    input_version = Column(Integer, nullable=False, server_default=text("1"))
-    status = Column(String(50), nullable=False)
-    result = Column(Text)          # JSON -> TEXT
-    result_version = Column(Integer, nullable=False, server_default=text("1"))
+    input = Column(Text, nullable=True)
+    result = Column(Text, nullable=True)
+    status = Column(String(50), nullable=False, default="scheduled")
+    error = Column(String, nullable=True)
+    error_details = Column(Text, nullable=True)
     attempt = Column(Integer, nullable=False, server_default=text("1"))
     max_attempts = Column(Integer, nullable=False, server_default=text("3"))
     heartbeat_at = Column(DateTime)

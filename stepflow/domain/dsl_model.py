@@ -1,5 +1,5 @@
 # stepflow/domain/dsl_model.py
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 from pydantic import BaseModel, Field
 from typing_extensions import Literal
 
@@ -19,16 +19,26 @@ class CatchDefinition(BaseModel):
 #
 # 2. 各种状态类型
 #
-class TaskState(BaseModel):
-    Type: Literal["Task"]
-    ActivityType: str
-    InputPath: Optional[str] = "$"
-    ResultPath: Optional[str] = "$"
-    OutputPath: Optional[str] = "$"
-    Retry: Optional[List[RetryPolicy]] = None
-    Catch: Optional[List[CatchDefinition]] = None
+class StateBase(BaseModel):
+    """状态基类"""
+    Type: str
+    Comment: Optional[str] = None
+    InputPath: Optional[str] = None
+    OutputPath: Optional[str] = None
+    ResultPath: Optional[str] = None
     Next: Optional[str] = None
-    End: bool = False
+    End: Optional[bool] = None
+
+class TaskState(StateBase):
+    """任务状态"""
+    Type: str = "Task"
+    Resource: Optional[str] = None
+    ActivityType: Optional[str] = None  # 自定义字段，指定活动类型
+    Parameters: Optional[Dict[str, Any]] = None  # 添加 Parameters 属性
+    Retry: Optional[List[Dict[str, Any]]] = None
+    Catch: Optional[List[Dict[str, Any]]] = None
+    TimeoutSeconds: Optional[int] = None
+    HeartbeatSeconds: Optional[int] = None
 
 class ChoiceRule(BaseModel):
     Variable: str
@@ -36,47 +46,46 @@ class ChoiceRule(BaseModel):
     # 其它条件 NumericEquals, etc.
     Next: str
 
-class ChoiceState(BaseModel):
-    Type: Literal["Choice"]
-    InputPath: Optional[str] = "$"
-    Choices: List[ChoiceRule]
+class ChoiceState(StateBase):
+    """选择状态"""
+    Type: str = "Choice"
+    Choices: List[Dict[str, Any]]
     Default: Optional[str] = None
 
-class WaitState(BaseModel):
-    Type: Literal["Wait"]
-    InputPath: Optional[str] = "$"
+class WaitState(StateBase):
+    """等待状态"""
+    Type: str = "Wait"
     Seconds: Optional[int] = None
-    Next: Optional[str] = None
-    End: bool = False
+    SecondsPath: Optional[str] = None
+    Timestamp: Optional[str] = None
+    TimestampPath: Optional[str] = None
 
-class PassState(BaseModel):
-    Type: Literal["Pass"]
-    InputPath: Optional[str] = "$"
-    Result: Optional[dict] = None
-    ResultPath: Optional[str] = "$"
-    OutputPath: Optional[str] = "$"
-    Next: Optional[str] = None
-    End: bool = False
+class PassState(StateBase):
+    """传递状态"""
+    Type: str = "Pass"
+    Result: Optional[Any] = None
+    ResultPath: Optional[str] = None
 
 class ParallelBranch(BaseModel):
     StartAt: str
     States: Dict[str, Union["TaskState", "ChoiceState", "WaitState", "ParallelState", "PassState", "FailState", "SucceedState"]]
 
-class ParallelState(BaseModel):
-    Type: Literal["Parallel"]
-    InputPath: Optional[str] = "$"
-    Branches: List[ParallelBranch]
-    ResultPath: Optional[str] = "$"
-    Next: Optional[str] = None
-    End: bool = False
+class ParallelState(StateBase):
+    """并行状态"""
+    Type: str = "Parallel"
+    Branches: List[Dict[str, Any]]
+    Retry: Optional[List[Dict[str, Any]]] = None
+    Catch: Optional[List[Dict[str, Any]]] = None
 
-class FailState(BaseModel):
-    Type: Literal["Fail"]
+class FailState(StateBase):
+    """失败状态"""
+    Type: str = "Fail"
     Error: Optional[str] = None
     Cause: Optional[str] = None
 
-class SucceedState(BaseModel):
-    Type: Literal["Succeed"]
+class SucceedState(StateBase):
+    """成功状态"""
+    Type: str = "Succeed"
 
 # 处理嵌套引用 (Parallel Branch)
 from typing import TYPE_CHECKING
@@ -90,17 +99,23 @@ if TYPE_CHECKING:
     SucceedState.model_rebuild()
 
 # 大 Union
-StateUnion = Union[TaskState, ChoiceState, WaitState, ParallelState, PassState, FailState, SucceedState]
+StateUnion = Union[
+    TaskState, 
+    ChoiceState, 
+    WaitState, 
+    ParallelState, 
+    PassState, 
+    FailState, 
+    SucceedState
+]
 
 #
 # 3. 顶层 WorkflowDSL
 #
 class WorkflowDSL(BaseModel):
     Version: str
-    Name: str
+    Name: Optional[str] = None
+    Comment: Optional[str] = None
     StartAt: str
-    Description: Optional[str] = None
-    TimeoutSeconds: Optional[int] = None
-    GlobalRetryPolicy: Optional[RetryPolicy] = None
-    OutputPath: Optional[str] = "$"
     States: Dict[str, StateUnion]
+    TimeoutSeconds: Optional[int] = None
