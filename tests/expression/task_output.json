@@ -1,0 +1,15 @@
+{
+  "response": {
+    "status": "success",
+    "data": {
+      "token": "abc123",
+      "roles": [
+        "admin",
+        "editor"
+      ]
+    }
+  },
+  "metrics": {
+    "duration_ms": 128
+  }
+}

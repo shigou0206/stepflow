@@ -4,10 +4,9 @@ from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from stepflow.infrastructure.database import get_db_session
-from stepflow.infrastructure.models import ActivityTask
-from stepflow.infrastructure.repositories.activity_task_repository import ActivityTaskRepository
-from stepflow.application.activity_task_service import ActivityTaskService
+from stepflow.persistence.database import get_db_session
+from stepflow.persistence.repositories.activity_task_repository import ActivityTaskRepository
+from stepflow.service.activity_task_service import ActivityTaskService
 from stepflow.interfaces.api.schemas import (
     ActivityTaskResponse,
     CompleteRequest,
@@ -90,7 +89,7 @@ async def complete_task(task_token: str, req: CompleteRequest, db=Depends(get_db
         raise HTTPException(status_code=404, detail="Task not found or cannot complete")
     
     # 推进工作流执行
-    from stepflow.domain.engine.execution_engine import advance_workflow
+    from stepflow.engine.workflow_engine import advance_workflow
     await advance_workflow(db, task.run_id)
     
     return {"status": "ok", "message": f"Task {task_token} completed"}
@@ -107,7 +106,7 @@ async def fail_task(task_token: str, req: FailRequest, db=Depends(get_db_session
         raise HTTPException(status_code=404, detail="Task not found or cannot fail")
     
     # 更新工作流执行状态为失败
-    from stepflow.infrastructure.repositories.workflow_execution_repository import WorkflowExecutionRepository
+    from stepflow.persistence.repositories.workflow_execution_repository import WorkflowExecutionRepository
     exec_repo = WorkflowExecutionRepository(db)
     wf_exec = await exec_repo.get_by_run_id(task.run_id)
     if wf_exec:

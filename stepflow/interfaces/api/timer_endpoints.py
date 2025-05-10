@@ -4,10 +4,10 @@ from datetime import datetime
 import uuid
 from pydantic import BaseModel, ConfigDict
 
-from stepflow.infrastructure.database import get_db_session
-from stepflow.infrastructure.models import Timer
-from stepflow.infrastructure.repositories.timer_repository import TimerRepository
-from stepflow.application.timer_service import TimerService
+from stepflow.persistence.database import get_db_session
+from stepflow.persistence.models import Timer
+from stepflow.persistence.repositories.timer_repository import TimerRepository
+from stepflow.service.timer_service import TimerService
 
 router = APIRouter(prefix="/timers", tags=["timers"])
 

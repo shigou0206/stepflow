@@ -1,19 +1,16 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from stepflow.infrastructure.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from stepflow.infrastructure.repositories.activity_task_repository import ActivityTaskRepository
-from stepflow.infrastructure.database import get_db_session
-from stepflow.infrastructure.models import WorkflowExecution, ActivityTask
-from stepflow.application.workflow_execution_service import WorkflowExecutionService
-from stepflow.application.workflow_template_service import WorkflowTemplateService
-from stepflow.infrastructure.repositories.workflow_template_repository import WorkflowTemplateRepository
-from stepflow.domain.engine.execution_engine import advance_workflow
+from stepflow.persistence.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from stepflow.persistence.database import get_db_session
+from stepflow.persistence.models import WorkflowExecution, ActivityTask
+from stepflow.service.workflow_execution_service import WorkflowExecutionService
+from stepflow.engine.workflow_engine import advance_workflow
 
 router = APIRouter(prefix="/workflow_executions", tags=["workflow_executions"])
 

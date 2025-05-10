@@ -1,0 +1,68 @@
+{
+  "type": "object",
+  "required": [
+    "Type",
+    "Choices"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "Type": {
+      "const": "Choice"
+    },
+    "Comment": {
+      "type": "string"
+    },
+    "InputExpr": {
+      "type": "string"
+    },
+    "OutputExpr": {
+      "type": "string"
+    },
+    "Choices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "Variable",
+          "Operator",
+          "Value",
+          "Next"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "Variable": {
+            "type": "string"
+          },
+          "Operator": {
+            "type": "string"
+          },
+          "Value": {},
+          "Next": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Default": {
+      "type": "string"
+    }
+  },
+  "allOf": [
+    {
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "Next"
+            ]
+          },
+          {
+            "required": [
+              "End"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

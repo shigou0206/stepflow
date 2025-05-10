@@ -1,6 +1,3 @@
-# stepflow/worker/tools/shell_tool.py
-
-import subprocess
 import asyncio
 import logging
 from typing import Dict, Any

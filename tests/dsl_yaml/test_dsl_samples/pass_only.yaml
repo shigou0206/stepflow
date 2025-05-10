@@ -1,0 +1,9 @@
+Comment: Minimal valid workflow with only Pass state
+StartAt: Step1
+States:
+  Step1:
+    Next: Step2
+    Result: Hello
+    Type: Pass
+  Step2:
+    Type: Succeed

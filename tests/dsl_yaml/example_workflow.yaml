@@ -1,0 +1,41 @@
+
+Comment: Simple test flow
+Version: "1.0.0"
+StartAt: StepA
+States:
+  StepA:
+    Type: Pass
+    Result: "Hello"
+    Next: StepB
+
+  StepB:
+    Type: Task
+    Resource: local_python:print_something.py
+    Parameters:
+      message: "World"
+    Retry:
+      - ErrorEquals: ["TimeoutError"]
+        IntervalSeconds: 2
+        MaxAttempts: 3
+    Next: StepC
+
+  StepC:
+    Type: Choice
+    Choices:
+      - Variable: "$.message"
+        Operator: "=="
+        Value: "success"
+        Next: StepSuccess
+      - Variable: "$.message"
+        Operator: "=="
+        Value: "fail"
+        Next: StepFail
+    Default: StepSuccess
+
+  StepSuccess:
+    Type: Succeed
+
+  StepFail:
+    Type: Fail
+    Error: "CustomError"
+    Cause: "Execution failed."

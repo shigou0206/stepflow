@@ -1,0 +1,13 @@
+StartAt: Start
+States:
+  Done:
+    Type: Succeed
+  Start:
+    Next: Done
+    Resource: local_python:echo.py
+    Retry:
+    - ErrorEquals:
+      - TimeoutError
+      IntervalSeconds: 1
+      MaxAttempts: 2
+    Type: Task

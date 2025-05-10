@@ -1,0 +1,29 @@
+StartAt: RunParallel
+States:
+  Done:
+    Type: Succeed
+  RunMap:
+    ItemsPath: $.list
+    Iterator:
+      StartAt: DoItem
+      States:
+        DoItem:
+          End: true
+          Type: Pass
+    Next: Done
+    Type: Map
+  RunParallel:
+    Branches:
+    - StartAt: A1
+      States:
+        A1:
+          Next: A2
+          Type: Pass
+        A2:
+          Type: Succeed
+    - StartAt: B1
+      States:
+        B1:
+          Type: Succeed
+    Next: RunMap
+    Type: Parallel

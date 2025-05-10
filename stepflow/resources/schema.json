@@ -1,0 +1,345 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "StepFlow DSL Schema",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["StartAt", "States"],
+    "properties": {
+      "Comment": {
+        "type": "string",
+        "description": "对工作流的描述性备注"
+      },
+      "Version": {
+        "type": "string",
+        "default": "1.0.0",
+        "description": "DSL 版本"
+      },
+      "StartAt": {
+        "type": "string",
+        "minLength": 1,
+        "description": "开始执行的状态名称"
+      },
+      "GlobalConfig": {
+        "type": "object",
+        "description": "全局上下文变量及默认环境配置，例如 secrets、env 等",
+        "additionalProperties": true
+      },
+      "ErrorHandling": {
+        "$ref": "#/definitions/ErrorHandling"
+      },
+      "States": {
+        "type": "object",
+        "minProperties": 1,
+        "additionalProperties": {
+          "$ref": "#/definitions/State"
+        }
+      }
+    },
+    "definitions": {
+      "RetryPolicy": {
+        "type": "object",
+        "required": ["ErrorEquals"],
+        "additionalProperties": false,
+        "properties": {
+          "ErrorEquals": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
+          "IntervalSeconds": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 1
+          },
+          "BackoffRate": {
+            "type": "number",
+            "minimum": 0,
+            "default": 2.0
+          },
+          "MaxAttempts": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 3
+          }
+        }
+      },
+      "CatchPolicy": {
+        "type": "object",
+        "required": ["ErrorEquals", "Next"],
+        "additionalProperties": false,
+        "properties": {
+          "ErrorEquals": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
+          "Next": {
+            "type": "string",
+            "description": "捕获后跳转到的状态名称"
+          },
+          "ResultPath": {
+            "type": "string",
+            "description": "将捕获结果写回输入的 JSON 路径"
+          }
+        }
+      },
+      "ErrorHandling": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "Retry": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/RetryPolicy" }
+          },
+          "Catch": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/CatchPolicy" }
+          }
+        }
+      },
+      "Branch": {
+        "type": "object",
+        "required": ["StartAt", "States"],
+        "additionalProperties": false,
+        "properties": {
+          "StartAt": { "type": "string" },
+          "States": {
+            "type": "object",
+            "additionalProperties": { "$ref": "#/definitions/State" }
+          }
+        }
+      },
+      "TaskState": {
+        "type": "object",
+        "required": ["Type", "Resource"],
+        "additionalProperties": false,
+        "properties": {
+          "Type": { "const": "Task" },
+          "Comment": { "type": "string" },
+          "Resource": {
+            "type": "string",
+            "description": "任务标识或 URI，例如 local_python:脚本路径 或 http_rest:POST:url"
+          },
+          "Parameters": {
+            "type": "object",
+            "description": "节点输入参数，可为任意 JSON 值，支持占位符与表达式",
+            "additionalProperties": true
+          },
+          "InputExpr": { "type": "string", "description": "可选输入表达式，对 Parameters 后结果二次映射" },
+          "ResultExpr": { "type": "string", "description": "可选结果表达式，用于从执行器原始输出中抽取或转换结果" },
+          "OutputExpr": { "type": "string", "description": "可选输出表达式，用于映射或筛选执行结果" },
+          "ExecutionConfig": {
+            "type": "object",
+            "description": "运行时配置，如 python_path、timeout、headers 等",
+            "additionalProperties": true
+          },
+          "HeartbeatSeconds": { "type": "integer", "minimum": 0 },
+          "HeartbeatExpr": { "type": "string" },
+          "Next": { "type": "string" },
+          "End": { "type": "boolean", "const": true },
+          "Retry": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/RetryPolicy" }
+          },
+          "Catch": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/CatchPolicy" }
+          }
+        },
+        "allOf": [
+          {
+            "oneOf": [
+              { "required": ["Next"], "not": { "required": ["End"] } },
+              { "required": ["End"], "not": { "required": ["Next"] } }
+            ]
+          }
+        ]
+      },
+      "WaitState": {
+        "type": "object",
+        "required": ["Type"],
+        "additionalProperties": false,
+        "properties": {
+          "Type": { "const": "Wait" },
+          "Comment": { "type": "string" },
+          "Seconds": { "type": "integer", "minimum": 0 },
+          "Timestamp": { "type": "string", "format": "date-time" },
+          "InputExpr": { "type": "string", "description": "可选输入表达式" },
+          "OutputExpr": { "type": "string", "description": "可选输出表达式" },
+          "Next": { "type": "string" },
+          "End": { "type": "boolean", "const": true }
+        },
+        "allOf": [
+          {
+            "oneOf": [
+              { "required": ["Seconds"], "not": { "required": ["Timestamp"] } },
+              { "required": ["Timestamp"], "not": { "required": ["Seconds"] } }
+            ]
+          },
+          {
+            "oneOf": [
+              { "required": ["Next"], "not": { "required": ["End"] } },
+              { "required": ["End"], "not": { "required": ["Next"] } }
+            ]
+          }
+        ]
+      },
+      "ChoiceState": {
+        "type": "object",
+        "required": ["Type", "Choices"],
+        "additionalProperties": false,
+        "properties": {
+          "Type": { "const": "Choice" },
+          "Comment": { "type": "string" },
+          "InputExpr": { "type": "string", "description": "输入表达式用于条件判断" },
+          "Choices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["Variable", "Operator", "Value", "Next"],
+              "additionalProperties": false,
+              "properties": {
+                "Variable": { "type": "string" },
+                "Operator": { "type": "string" },
+                "Value": {},
+                "Next": { "type": "string" }
+              }
+            }
+          },
+          "Default": { "type": "string", "description": "未命中任何 Choice 时跳转的状态" }
+        }
+      },
+      "ParallelState": {
+        "type": "object",
+        "required": ["Type", "Branches"],
+        "additionalProperties": false,
+        "properties": {
+          "Type": { "const": "Parallel" },
+          "Comment": { "type": "string" },
+          "Branches": { "type": "array", "items": { "$ref": "#/definitions/Branch" } },
+          "MaxConcurrency": { "type": "integer", "minimum": 1 },
+          "InputExpr": { "type": "string" },
+          "OutputExpr": { "type": "string" },
+          "Retry": { "type": "array", "items": { "$ref": "#/definitions/RetryPolicy" } },
+          "Catch": { "type": "array", "items": { "$ref": "#/definitions/CatchPolicy" } },
+          "Next": { "type": "string" },
+          "End": { "type": "boolean", "const": true }
+        },
+        "allOf": [
+          {
+            "oneOf": [
+              { "required": ["Next"], "not": { "required": ["End"] } },
+              { "required": ["End"], "not": { "required": ["Next"] } }
+            ]
+          }
+        ]
+      },
+      "MapState": {
+        "type": "object",
+        "required": ["Type", "ItemsPath", "Iterator"],
+        "additionalProperties": false,
+        "properties": {
+          "Type": { "const": "Map" },
+          "Comment": { "type": "string" },
+          "ItemsPath": { "type": "string" },
+          "Iterator": { "$ref": "#/definitions/Branch" },
+          "MaxConcurrency": { "type": "integer", "minimum": 1 },
+          "InputExpr": { "type": "string" },
+          "OutputExpr": { "type": "string" },
+          "Retry": { "type": "array", "items": { "$ref": "#/definitions/RetryPolicy" } },
+          "Catch": { "type": "array", "items": { "$ref": "#/definitions/CatchPolicy" } },
+          "Next": { "type": "string" },
+          "End": { "type": "boolean", "const": true }
+        },
+        "allOf": [
+          {
+            "oneOf": [
+              { "required": ["Next"], "not": { "required": ["End"] } },
+              { "required": ["End"], "not": { "required": ["Next"] } }
+            ]
+          }
+        ]
+      },
+      "PassState": {
+        "type": "object",
+        "required": ["Type"],
+        "additionalProperties": false,
+        "properties": {
+          "Type": { "const": "Pass" },
+          "Comment": { "type": "string" },
+          "InputExpr": { "type": "string" },
+          "Result": {},
+          "ResultPath": { "type": "string" },
+          "OutputExpr": { "type": "string" },
+          "Next": { "type": "string" },
+          "End": { "type": "boolean" }
+        },
+        "allOf": [
+          {
+            "oneOf": [
+              { "required": ["Next"], "not": { "required": ["End"] } },
+              { "required": ["End"], "not": { "required": ["Next"] } }
+            ]
+          }
+        ]
+      },
+      "SucceedState": {
+        "type": "object",
+        "required": ["Type"],
+        "additionalProperties": false,
+        "properties": {
+          "Type": { "const": "Succeed" },
+          "Comment": { "type": "string" },
+          "InputExpr": { "type": "string" }
+        }
+      },
+      "FailState": {
+        "type": "object",
+        "required": ["Type"],
+        "additionalProperties": false,
+        "properties": {
+          "Type": { "const": "Fail" },
+          "Comment": { "type": "string" },
+          "Error": { "type": "string" },
+          "Cause": { "type": "string" }
+        }
+      },
+      "CustomState": {
+        "type": "object",
+        "required": ["Type", "Resource"],
+        "additionalProperties": false,
+        "properties": {
+          "Type": { "const": "Custom" },
+          "Comment": { "type": "string" },
+          "Resource": { "type": "string" },
+          "CustomConfig": { "type": "object", "additionalProperties": true },
+          "InputExpr": { "type": "string" },
+          "OutputExpr": { "type": "string" },
+          "Next": { "type": "string" },
+          "End": { "type": "boolean", "const": true }
+        },
+        "allOf": [
+          {
+            "oneOf": [
+              { "required": ["Next"], "not": { "required": ["End"] } },
+              { "required": ["End"], "not": { "required": ["Next"] } }
+            ]
+          }
+        ]
+      },
+      "State": {
+        "oneOf": [
+          { "$ref": "#/definitions/TaskState" },
+          { "$ref": "#/definitions/WaitState" },
+          { "$ref": "#/definitions/ChoiceState" },
+          { "$ref": "#/definitions/ParallelState" },
+          { "$ref": "#/definitions/MapState" },
+          { "$ref": "#/definitions/PassState" },
+          { "$ref": "#/definitions/SucceedState" },
+          { "$ref": "#/definitions/FailState" },
+          { "$ref": "#/definitions/CustomState" }
+        ]
+      }
+    }
+  }
+  

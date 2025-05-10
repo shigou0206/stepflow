@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import Optional, List
+from typing import List
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
-from stepflow.infrastructure.database import get_db_session
-from stepflow.infrastructure.models import WorkflowEvent
-from stepflow.infrastructure.repositories.workflow_event_repository import WorkflowEventRepository
-from stepflow.application.workflow_event_service import WorkflowEventService
+from stepflow.persistence.database import get_db_session
+from stepflow.persistence.models import WorkflowEvent
+from stepflow.persistence.repositories.workflow_event_repository import WorkflowEventRepository
+from stepflow.service.workflow_event_service import WorkflowEventService
 
 router = APIRouter(prefix="/workflow_events", tags=["workflow_events"])
 

@@ -1,0 +1,9 @@
+StartAt: Choice
+States:
+  Choice:
+    Choices:
+    - Next: MissingState
+      Operator: ==
+      Value: 1
+      Variable: $.x
+    Type: Choice

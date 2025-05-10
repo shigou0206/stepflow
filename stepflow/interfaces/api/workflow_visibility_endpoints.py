@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from stepflow.infrastructure.database import get_db_session
-from stepflow.infrastructure.repositories.workflow_visibility_repository import WorkflowVisibilityRepository
-from stepflow.application.workflow_visibility_service import WorkflowVisibilityService
+from stepflow.persistence.database import get_db_session
+from stepflow.persistence.repositories.workflow_visibility_repository import WorkflowVisibilityRepository
+from stepflow.service.workflow_visibility_service import WorkflowVisibilityService
 from stepflow.interfaces.api.schemas import WorkflowVisibilityResponse
 
 router = APIRouter(
@@ -26,7 +26,7 @@ async def get_workflow_visibility(
     visibility = await service.get_visibility(run_id)
     if not visibility:
         # 如果没有找到可见性记录，尝试从工作流执行中获取
-        from stepflow.infrastructure.repositories.workflow_execution_repository import WorkflowExecutionRepository
+        from stepflow.persistence.repositories.workflow_execution_repository import WorkflowExecutionRepository
         exec_repo = WorkflowExecutionRepository(db)
         execution = await exec_repo.get_by_run_id(run_id)
         
@@ -34,7 +34,7 @@ async def get_workflow_visibility(
             raise HTTPException(status_code=404, detail="Workflow visibility not found")
         
         # 创建可见性记录
-        from stepflow.infrastructure.models import WorkflowVisibility
+        from stepflow.persistence.models import WorkflowVisibility
         visibility = WorkflowVisibility(
             run_id=execution.run_id,
             workflow_id=execution.workflow_id,

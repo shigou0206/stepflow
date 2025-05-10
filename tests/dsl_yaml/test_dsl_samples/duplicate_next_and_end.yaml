@@ -1,0 +1,9 @@
+StartAt: Step1
+States:
+  Done:
+    Type: Succeed
+  Step1:
+    End: true
+    Next: Done
+    Resource: local_python:foo.py
+    Type: Task

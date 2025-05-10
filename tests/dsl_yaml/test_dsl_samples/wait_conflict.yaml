@@ -1,0 +1,9 @@
+StartAt: WaitHere
+States:
+  Done:
+    Type: Succeed
+  WaitHere:
+    Next: Done
+    Seconds: 5
+    Timestamp: '2025-01-01T00:00:00Z'
+    Type: Wait

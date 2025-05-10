@@ -1,0 +1,5 @@
+Comment: StartAt references a state that doesn't exist
+StartAt: DoesNotExist
+States:
+  OnlyState:
+    Type: Succeed

@@ -1,0 +1,25 @@
+StartAt: CheckValue
+States:
+  CheckValue:
+    Choices:
+    - Next: DoA
+      Operator: ==
+      Value: A
+      Variable: $.type
+    - Next: DoB
+      Operator: ==
+      Value: B
+      Variable: $.type
+    Default: DoDefault
+    Type: Choice
+  DoA:
+    Next: End
+    Type: Pass
+  DoB:
+    Next: End
+    Type: Pass
+  DoDefault:
+    Next: End
+    Type: Pass
+  End:
+    Type: Succeed

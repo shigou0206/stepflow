@@ -1,5 +1,3 @@
-# stepflow/worker/tools/http_tool.py
-
 import aiohttp
 import json
 import logging

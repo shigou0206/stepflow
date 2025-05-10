@@ -1,19 +1,18 @@
-# stepflow/interfaces/api/workflow_template_endpoints.py
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 from datetime import datetime
-from stepflow.infrastructure.database import get_db_session
-from stepflow.application.workflow_template_service import WorkflowTemplateService
-from stepflow.infrastructure.repositories.workflow_template_repository import WorkflowTemplateRepository
+from stepflow.persistence.database import get_db_session
+from stepflow.service.workflow_template_service import WorkflowTemplateService
+from stepflow.persistence.repositories.workflow_template_repository import WorkflowTemplateRepository
 from stepflow.interfaces.api.schemas import (
     WorkflowTemplateCreate, 
     WorkflowTemplateResponse,
     WorkflowTemplateUpdate
 )
-from stepflow.infrastructure.models import WorkflowTemplate
+from stepflow.persistence.models import WorkflowTemplate
 
 router = APIRouter(
     prefix="/workflow_templates",

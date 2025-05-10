@@ -1,0 +1,8 @@
+StartAt: PluginStep
+States:
+  Done:
+    Type: Succeed
+  PluginStep:
+    Next: Done
+    Resource: my_plugin:run
+    Type: Custom

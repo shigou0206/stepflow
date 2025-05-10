@@ -1,5 +1,3 @@
-# stepflow/worker/tools/tool_registry.py
-
 from .base_tool import ITool
 from .shell_tool import ShellTool
 from .http_tool import HttpTool
