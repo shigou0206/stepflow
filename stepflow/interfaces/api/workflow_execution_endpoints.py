@@ -45,6 +45,7 @@ async def start_workflow(req: StartExecutionRequest, db: Session = Depends(get_d
     )
 
     # 2) 如果 advance_workflow 也是异步，就 await
+    print(f"wf_exec.run_id: {wf_exec.run_id}")
     await advance_workflow(wf_exec.run_id)
 
     return {

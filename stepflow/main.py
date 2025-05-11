@@ -18,7 +18,13 @@ from stepflow.worker.activity_worker import run_activity_worker
 from stepflow.interfaces.websocket.routes import router as websocket_router
 
 # 设置 logger
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
+
 
 # Define lifespan context manager
 @asynccontextmanager

@@ -30,6 +30,7 @@ class DBHook(ExecutionHooks):
     async def _record_event(self, run_id: str, event_type: EventType, **attrs):
         try:
             event_id = await self.exec_service.next_event_id(run_id)
+            print(f"db hook: _record_event: {run_id}, {event_type}, {attrs} {event_id}")
             await self.event_service.record_event(
                 run_id=run_id,
                 shard_id=self.shard_id,
@@ -73,6 +74,7 @@ class DBHook(ExecutionHooks):
         )
 
     async def on_node_dispatch(self, run_id: str, state_id: str, input_data: Any):
+        print(f"db hook: on_node_dispatch: {run_id}, {state_id}, {input_data}")
         await self._record_event(
             run_id,
             EventType.NodeDispatch,
