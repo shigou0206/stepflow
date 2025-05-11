@@ -6,7 +6,7 @@ from stepflow.worker.tools.tool_registry import tool_registry
 from stepflow.worker.tools.http_tool import HttpTool
 from stepflow.worker.tools.shell_tool import ShellTool
 from stepflow.engine.workflow_engine import WorkflowEngine
-
+from stepflow.tests.mocks.execution_service import MockExecutionService
 
 class PrintHook(ExecutionHooks):
     async def on_workflow_start(self, run_id: str):
@@ -69,6 +69,6 @@ async def test_multi_step_workflow():
         }
     })
 
-    engine = WorkflowEngine(hook=PrintHook())
+    engine = WorkflowEngine(hook=PrintHook(), execution_service=MockExecutionService())
     result = await engine.run("multi-step-run", dsl, {})
     assert "Final step" in result

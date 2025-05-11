@@ -90,7 +90,7 @@ async def complete_task(task_token: str, req: CompleteRequest, db=Depends(get_db
     
     # 推进工作流执行
     from stepflow.engine.workflow_engine import advance_workflow
-    await advance_workflow(db, task.run_id)
+    await advance_workflow(task.run_id)
     
     return {"status": "ok", "message": f"Task {task_token} completed"}
 

@@ -28,3 +28,7 @@ class HookDispatcher(ExecutionHooks):
     async def on_control_signal(self, run_id, signal_type, reason):
         for h in self.hooks:
             await h.on_control_signal(run_id, signal_type, reason)
+
+    async def on_node_dispatch(self, run_id, state_name, context):
+        for h in self.hooks:
+            await h.on_node_dispatch(run_id, state_name, context)

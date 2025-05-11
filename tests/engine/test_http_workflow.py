@@ -1,13 +1,11 @@
-
 import pytest
 from typing import Optional
 from stepflow.dsl.dsl_model import WorkflowDSL
 from stepflow.hooks.base import ExecutionHooks
-from stepflow.worker.task_executor import TaskExecutor
 from stepflow.worker.tools.tool_registry import tool_registry
 from stepflow.worker.tools.http_tool import HttpTool
 from stepflow.engine.workflow_engine import WorkflowEngine
-
+from stepflow.tests.mocks.execution_service import MockExecutionService
 
 class PrintHook(ExecutionHooks):
     async def on_workflow_start(self, run_id: str):
@@ -28,9 +26,8 @@ class PrintHook(ExecutionHooks):
     async def on_control_signal(self, run_id: str, signal: str, reason: Optional[str]):
         print(f"[{run_id}] ⚠️ Control signal: {signal} ({reason})")
 
-
 @pytest.mark.asyncio
-async def test_http_workflow():
+async def test_http_tool_task():
     tool_registry["HttpTool"] = HttpTool()
 
     dsl = WorkflowDSL.model_validate({
@@ -51,6 +48,8 @@ async def test_http_workflow():
         }
     })
 
-    engine = WorkflowEngine(hook=PrintHook())
-    result = await engine.run("http-run-001", dsl, {})
+    engine = WorkflowEngine(hook=PrintHook(), execution_service=MockExecutionService())  # 如果 run() 中未访问 execution_service，可设为 None
+    result = await engine.run("test-http-tool", dsl, {})
+    
+    assert isinstance(result, str)
     assert "httpbin.org" in result

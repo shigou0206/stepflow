@@ -23,3 +23,6 @@ class ExecutionHooks(ABC):
 
     @abstractmethod
     async def on_control_signal(self, run_id: str, signal: WorkflowControlType, reason: Optional[str] = None): ...
+
+    @abstractmethod
+    async def on_node_dispatch(self, run_id: str, state_name: str, context: dict): ...

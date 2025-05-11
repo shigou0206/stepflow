@@ -14,6 +14,7 @@ class EventType(str, Enum):
     NodeFail = "NodeFail"
     Transition = "Transition"
     WorkflowControl = "WorkflowControl"
+    NodeDispatch = "NodeDispatch"
 
     # Optional: user-defined or system-meta events
     SignalReceived = "SignalReceived"

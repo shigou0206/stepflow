@@ -1,5 +1,5 @@
 from typing import Optional, List
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from stepflow.persistence.models import WorkflowExecution
@@ -23,3 +23,26 @@ class WorkflowExecutionRepository(BaseRepository[WorkflowExecution]):
 
     async def list_all(self) -> List[WorkflowExecution]:
         return await super().list_all()
+    
+    async def update_state_and_version(
+        self,
+        run_id: str,
+        new_state: str,
+        expected_version: int
+    ) -> bool:
+        stmt = (
+            update(WorkflowExecution)
+            .where(
+                WorkflowExecution.run_id == run_id,
+                WorkflowExecution.version == expected_version
+            )
+            .values(
+                current_state_name=new_state,
+                version=expected_version + 1
+            )
+            .execution_options(synchronize_session=False)
+        )
+        result = await self.session.execute(stmt)
+        await self.session.commit()
+        return result.rowcount == 1
+    

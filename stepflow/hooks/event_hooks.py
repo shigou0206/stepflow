@@ -37,6 +37,9 @@ class EventHookExecutor(ExecutionHooks):
     async def on_node_fail(self, run_id, state_id, error):
         await self._emit(run_id, EventType.NodeFail, state_id=state_id, error=error)
 
+    async def on_node_dispatch(self, run_id, state_id, input):
+        await self._emit(run_id, EventType.NodeDispatch, state_id=state_id, input=input)
+
     async def on_workflow_end(self, run_id, status):
         await self._emit(run_id, EventType.WorkflowEnd, status=status)
 

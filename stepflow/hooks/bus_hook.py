@@ -36,6 +36,12 @@ class BusHook(ExecutionHooks):
             "error": error
         })
 
+    async def on_node_dispatch(self, run_id: str, state_name: str, input):
+        await self._publish(run_id, EventType.NodeDispatch, {
+            "state_id": state_name,
+            "input": input
+        })
+
     async def on_workflow_end(self, run_id: str, result):
         await self._publish(run_id, EventType.WorkflowEnd, {
             "result": result
@@ -56,6 +62,8 @@ class BusHook(ExecutionHooks):
             timestamp=datetime.now(timezone.utc),
             attributes=attributes,
             state_id=attributes.get("state_id"),
-            state_type=None  # 可扩展
+            state_type=attributes.get("state_type"),
+            trace_id=attributes.get("trace_id"),
+            parent_event_id=attributes.get("parent_event_id")
         )
         await self.bus.publish(evt)

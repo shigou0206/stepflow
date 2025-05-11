@@ -2,6 +2,7 @@ import json
 from typing import Any
 from stepflow.hooks.base import ExecutionHooks
 
+
 class PrintHook(ExecutionHooks):
     async def on_workflow_start(self, run_id: str):
         print(f"[{run_id}] 🚀 Workflow started")
@@ -14,6 +15,9 @@ class PrintHook(ExecutionHooks):
 
     async def on_node_fail(self, run_id: str, state_name: str, error: str):
         print(f"[{run_id}] ❌ {state_name} failed with error: {error}")
+
+    async def on_node_dispatch(self, run_id: str, state_name: str, input: Any):
+        print(f"[{run_id}] 📤 Dispatched {state_name} with input: {json.dumps(input, ensure_ascii=False)}")
 
     async def on_workflow_end(self, run_id: str, result: Any):
         print(f"[{run_id}] 🏁 Workflow ended with result: {json.dumps(result, ensure_ascii=False)}")
