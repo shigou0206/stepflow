@@ -87,10 +87,15 @@ class DBHook(ExecutionHooks):
             result=result
         )
         try:
-            await self.exec_service.complete_workflow(run_id, result=result)
-            await self.vis_service.update_visibility_status(run_id, "completed")
+            # 如果当前状态已经是终止态，就跳过更新
+            exec_obj = await self.exec_service.get_execution(run_id)
+            if exec_obj.status not in {"completed", "failed", "canceled"}:
+                await self.exec_service.complete_workflow(run_id, result=result)
+                await self.vis_service.update_visibility_status(run_id, "completed")
+            else:
+                logger.info(f"[DBHook] Workflow {run_id} already {exec_obj.status}, skip mark completed.")
         except Exception as e:
-            logger.exception(f"[DBHook] ❌ Failed to complete workflow {run_id}: {e}")
+            logger.exception(f"[DBHook] Failed to mark workflow {run_id} as completed: {e}")
 
     async def on_control_signal(self, run_id: str, signal_type: str, reason: str):
         await self._record_event(

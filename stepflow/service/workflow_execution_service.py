@@ -42,6 +42,14 @@ class WorkflowExecutionService:
         )
         logger.info(f"[start_workflow] Creating workflow {run_id} with template {template_id}")
         return await self.repo.create(wf_exec)
+    
+    async def next_event_id(self, run_id: str) -> int:
+        exec_ = await self.repo.get_by_run_id(run_id)
+        if not exec_:
+            raise ValueError(f"No workflow execution found: {run_id}")
+        exec_.current_event_id += 1
+        await self.repo.update(exec_)
+        return exec_.current_event_id
 
     async def get_execution(self, run_id: str) -> Optional[WorkflowExecution]:
         logger.info(f"[get_execution] Fetching execution for run_id={run_id}")

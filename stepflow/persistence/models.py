@@ -47,6 +47,7 @@ class WorkflowExecution(Base):
     memo = Column(Text)            # JSON -> TEXT
     search_attrs = Column(Text)    # JSON -> TEXT
     version = Column(Integer, nullable=False, server_default=text("1"))
+    context_snapshot = Column(Text, nullable=True)
     
 
     # optional relationship

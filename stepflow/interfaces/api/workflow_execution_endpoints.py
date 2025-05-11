@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, UTC
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -45,7 +45,7 @@ async def start_workflow(req: StartExecutionRequest, db: Session = Depends(get_d
     )
 
     # 2) 如果 advance_workflow 也是异步，就 await
-    await advance_workflow(db, wf_exec.run_id)
+    await advance_workflow(wf_exec.run_id)
 
     return {
         "status": "ok",
@@ -122,6 +122,6 @@ async def cancel_workflow(run_id: str, db: Session = Depends(get_db_session)):
         return {"error": f"Cannot cancel, current status={wf.status}"}
 
     wf.status = "canceled"
-    wf.close_time = datetime.utcnow()
+    wf.close_time = datetime.now(UTC)
     db.commit()
     return {"status": "ok", "message": f"Workflow {run_id} canceled"}

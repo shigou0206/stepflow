@@ -10,14 +10,6 @@ class WorkflowEventService:
         self.repo = repo
         self._event_id_map: Dict[str, int] = {}
 
-    async def next_event_id(self, run_id: str) -> int:
-        exec_ = await self.repo.get_by_run_id(run_id)
-        if not exec_:
-            raise ValueError(f"No execution found: {run_id}")
-        exec_.current_event_id += 1
-        await self.repo.update(exec_)
-        return exec_.current_event_id
-
     async def record_event(
         self,
         run_id: str,
