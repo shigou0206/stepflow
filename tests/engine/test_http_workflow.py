@@ -1,13 +1,13 @@
 import pytest
 from typing import Optional
 from stepflow.dsl.dsl_model import WorkflowDSL
-from stepflow.hooks.base import ExecutionHooks
 from stepflow.worker.tools.tool_registry import tool_registry
 from stepflow.worker.tools.http_tool import HttpTool
 from stepflow.engine.workflow_engine import WorkflowEngine
 from stepflow.tests.mocks.execution_service import MockExecutionService
+from stepflow.tests.mocks.task_service import MockTaskService
 from stepflow.hooks.print_hook import PrintHook
-
+from stepflow.persistence.repositories.activity_task_repository import ActivityTaskRepository
 
 @pytest.mark.asyncio
 async def test_http_tool_task():
@@ -31,7 +31,7 @@ async def test_http_tool_task():
         }
     })
 
-    engine = WorkflowEngine(hook=PrintHook(), execution_service=MockExecutionService())  # 如果 run() 中未访问 execution_service，可设为 None
+    engine = WorkflowEngine(hook=PrintHook(), execution_service=MockExecutionService(), task_service=MockTaskService())  # 如果 run() 中未访问 execution_service，可设为 None
     result = await engine.run("test-http-tool", dsl, {})
     
     assert isinstance(result, str)

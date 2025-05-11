@@ -1,23 +1,31 @@
 import uuid
+import logging
 from datetime import datetime, UTC
 from typing import Optional, List
 from stepflow.persistence.models import ActivityTask
 from stepflow.persistence.repositories.activity_task_repository import ActivityTaskRepository
 
+logger = logging.getLogger(__name__)
+
+
 class ActivityTaskService:
     def __init__(self, repo: ActivityTaskRepository):
         self.repo = repo
 
-    async def create_task(self, run_id: str, activity_type: str, input_data: str) -> ActivityTask:
+    async def create_task(self, run_id: str, state_name: str, activity_type: str, input_data: str) -> ActivityTask:
         task = ActivityTask(
             task_token=str(uuid.uuid4()),
             run_id=run_id,
+            state_name=state_name,
             activity_type=activity_type,
-            status="scheduled",
             input=input_data,
+            status="scheduled",
             scheduled_at=datetime.now(UTC)
         )
         return await self.repo.create(task)
+    
+    async def get_by_run_id_and_state(self, run_id: str, state_name: str) -> Optional[ActivityTask]:
+        return await self.repo.get_by_run_id_and_state_name(run_id, state_name)
 
     async def get_task(self, task_token: str) -> Optional[ActivityTask]:
         return await self.repo.get_by_task_token(task_token)
@@ -28,9 +36,9 @@ class ActivityTaskService:
     async def get_scheduled_tasks(self, limit: int = 10) -> List[ActivityTask]:
         return await self.repo.list_by_status("scheduled", limit)
 
-    async def mark_tasks_as_running(self, task_tokens: List[str]) -> None:
-        for token in task_tokens:
-            await self.repo.update_status(token, "running")
+    async def mark_tasks_as_running(self, tasks: List[ActivityTask]) -> None:
+        task_tokens = [t.task_token for t in tasks]
+        await self.repo.bulk_update_status(task_tokens, "running")
 
     async def start_task(self, task_token: str) -> Optional[ActivityTask]:
         task = await self.repo.get_by_task_token(task_token)

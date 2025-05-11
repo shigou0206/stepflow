@@ -113,6 +113,7 @@ class ActivityTask(Base):
     shard_id = Column(Integer, nullable=False, default=0)
     seq = Column(Integer, nullable=False, default=0)
     activity_type = Column(String(255), nullable=False)
+    state_name = Column(String(255), nullable=True)
     input = Column(Text, nullable=True)
     result = Column(Text, nullable=True)
     status = Column(String(50), nullable=False, default="scheduled")

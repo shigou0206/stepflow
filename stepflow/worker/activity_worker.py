@@ -42,6 +42,7 @@ async def run_activity_worker(poll_interval: int = 5):
             await _process_available_tasks()
         except Exception as e:
             logger.exception(f"🔥 Worker loop error: {e}")
+
         await asyncio.sleep(poll_interval)
 
 

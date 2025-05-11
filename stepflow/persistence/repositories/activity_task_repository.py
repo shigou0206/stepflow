@@ -1,5 +1,6 @@
 from typing import Optional, List
 from sqlalchemy import select, update
+from datetime import datetime, UTC
 from sqlalchemy.ext.asyncio import AsyncSession
 from stepflow.persistence.models import ActivityTask
 from stepflow.persistence.repositories.base_repository import BaseRepository
@@ -57,3 +58,25 @@ class ActivityTaskRepository(BaseRepository[ActivityTask]):
         await self.session.execute(stmt)
         await self.session.commit()
         return await self.get_by_id(task.task_token)
+    
+
+    async def bulk_update_status(self, task_tokens: List[str], status: str) -> None:
+        if not task_tokens:
+            return
+
+        stmt = (
+            update(ActivityTask)
+            .where(ActivityTask.task_token.in_(task_tokens))
+            .values(status=status, started_at=datetime.now(UTC))
+            .execution_options(synchronize_session="fetch")
+        )
+        await self.session.execute(stmt)
+        await self.session.commit()
+
+    async def get_by_run_id_and_state_name(self, run_id: str, state_name: str):
+        stmt = select(ActivityTask).where(
+            ActivityTask.run_id == run_id,
+            ActivityTask.state_name == state_name
+        ).order_by(ActivityTask.scheduled_at.desc()).limit(1)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
