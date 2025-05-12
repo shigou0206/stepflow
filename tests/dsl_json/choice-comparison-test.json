@@ -1,0 +1,54 @@
+{
+    "StartAt": "ChoiceStart",
+    "States": {
+      "ChoiceStart": {
+        "Type": "Choice",
+        "Choices": [
+          {
+            "Variable": "$.value",
+            "Equals": 42,
+            "Next": "MatchedEquals"
+          },
+          {
+            "Variable": "$.value",
+            "NotEquals": 0,
+            "Next": "MatchedNotEquals"
+          },
+          {
+            "Variable": "$.score",
+            "GreaterThan": 90,
+            "Next": "HighScore"
+          },
+          {
+            "Variable": "$.score",
+            "LessThanEquals": 60,
+            "Next": "LowScore"
+          },
+          {
+            "Variable": "$.role",
+            "StringEquals": "admin",
+            "Next": "IsAdmin"
+          },
+          {
+            "Variable": "$.tag",
+            "IsIn": ["dev", "prod"],
+            "Next": "TagMatched"
+          },
+          {
+            "Variable": "$.optional",
+            "IsNull": true,
+            "Next": "IsNullField"
+          }
+        ],
+        "Default": "FallbackPath"
+      },
+      "MatchedEquals": { "Type": "Pass", "Result": "value==42", "End": true },
+      "MatchedNotEquals": { "Type": "Pass", "Result": "value!=0", "End": true },
+      "HighScore": { "Type": "Pass", "Result": "Excellent", "End": true },
+      "LowScore": { "Type": "Pass", "Result": "Failing", "End": true },
+      "IsAdmin": { "Type": "Pass", "Result": "Welcome admin", "End": true },
+      "TagMatched": { "Type": "Pass", "Result": "Environment matched", "End": true },
+      "IsNullField": { "Type": "Pass", "Result": "Null value detected", "End": true },
+      "FallbackPath": { "Type": "Pass", "Result": "Nothing matched", "End": true }
+    }
+  }

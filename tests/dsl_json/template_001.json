@@ -1,0 +1,17 @@
+{
+    "StartAt": "FetchData",
+    "States": {
+      "FetchData": {
+        "Type": "Task",
+        "Resource": "HttpTool",
+        "Parameters": {
+          "url": "http://httpbin.org/get",
+          "method": "GET",
+          "parse_json": true
+        },
+        "ResultExpr": "$.json.url",
+        "OutputExpr": "$",
+        "End": true
+      }
+    }
+  }

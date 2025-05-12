@@ -1,0 +1,52 @@
+{
+    "StartAt": "CheckUser",
+    "States": {
+      "CheckUser": {
+        "Type": "Choice",
+        "Choices": [
+          {
+            "Condition": {
+              "And": [
+                { "Variable": "$.role", "Operator": "Equals", "Value": "admin" },
+                { "Variable": "$.score", "Operator": "GreaterThan", "Value": 90 }
+              ]
+            },
+            "Next": "AdminHighScore"
+          },
+          {
+            "Condition": {
+              "Not": { "Variable": "$.active", "Operator": "Equals", "Value": true }
+            },
+            "Next": "InactiveUser"
+          },
+          {
+            "Condition": {
+              "Variable": "$.tags", "Operator": "IsNull"
+            },
+            "Next": "MissingTags"
+          }
+        ],
+        "Default": "Fallback"
+      },
+      "AdminHighScore": {
+        "Type": "Pass",
+        "Result": { "message": "Admin with high score" },
+        "End": true
+      },
+      "InactiveUser": {
+        "Type": "Fail",
+        "Error": "InactiveAccount",
+        "Cause": "User is not active"
+      },
+      "MissingTags": {
+        "Type": "Pass",
+        "Result": { "message": "No tags assigned" },
+        "End": true
+      },
+      "Fallback": {
+        "Type": "Pass",
+        "Result": { "message": "Default path taken" },
+        "End": true
+      }
+    }
+  }

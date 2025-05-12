@@ -1,0 +1,90 @@
+{
+  "StartAt": "EvaluateUserType",
+  "States": {
+    "EvaluateUserType": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Condition": {
+            "Variable": "$.user_type",
+            "Operator": "Equals",
+            "Value": "admin"
+          },
+          "Next": "HttpTask1"
+        },
+        {
+          "Condition": {
+            "Variable": "$.user_type",
+            "Operator": "Equals",
+            "Value": "guest"
+          },
+          "Next": "GuestNotice"
+        }
+      ],
+      "Default": "RejectUser"
+    },
+
+    "HttpTask1": {
+      "Type": "Task",
+      "Resource": "HttpTool",
+      "Parameters": {
+        "url": "https://httpbin.org/get",
+        "method": "GET",
+        "parse_json": true
+      },
+      "ResultExpr": "$.json",
+      "Next": "AddNote"
+    },
+
+    "AddNote": {
+      "Type": "Pass",
+      "Result": { "message": "First request done" },
+      "ResultPath": "$.note",
+      "Next": "EvaluateScore"
+    },
+
+    "EvaluateScore": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Condition": {
+            "Variable": "$.score",
+            "Operator": "GreaterThan",
+            "Value": 90
+          },
+          "Next": "HttpTask2"
+        }
+      ],
+      "Default": "WaitForApproval"
+    },
+
+    "HttpTask2": {
+      "Type": "Task",
+      "Resource": "HttpTool",
+      "Parameters": {
+        "url": "https://httpbin.org/get",
+        "method": "GET",
+        "parse_json": true
+      },
+      "End": true
+    },
+
+    "WaitForApproval": {
+      "Type": "Wait",
+      "Seconds": 5,
+      "End": true
+    },
+
+    "GuestNotice": {
+      "Type": "Pass",
+      "Result": { "note": "Guests cannot proceed" },
+      "End": true
+    },
+
+    "RejectUser": {
+      "Type": "Fail",
+      "Error": "Unauthorized",
+      "Cause": "User type not allowed"
+    }
+  }
+}

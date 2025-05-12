@@ -10,11 +10,17 @@ from stepflow.persistence.models import Timer
 from stepflow.persistence.repositories.timer_repository import TimerRepository
 from stepflow.service.timer_service import TimerService
 
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
 router = APIRouter(prefix="/timers", tags=["timers"])
 
 class TimerDTO(BaseModel):
     timer_id: str
     run_id: str
+    state_name: str
     shard_id: int
     fire_at: datetime
     status: str
@@ -23,6 +29,7 @@ class TimerDTO(BaseModel):
 
 class ScheduleTimerRequest(BaseModel):
     run_id: str
+    state_name: str
     shard_id: int
     fire_at: datetime
 
@@ -30,19 +37,19 @@ class ScheduleTimerRequest(BaseModel):
 async def schedule_timer(req: ScheduleTimerRequest, db: AsyncSession = Depends(get_db_session)):
     repo = TimerRepository(db)
     svc = TimerService(repo)
-    t = await svc.schedule_timer(
+    timer = await svc.schedule_timer(
         run_id=req.run_id,
+        state_name=req.state_name,
         shard_id=req.shard_id,
         fire_at=req.fire_at
     )
-    return t
+    return timer
 
 @router.get("/", response_model=List[TimerDTO])
 async def list_all_timers(db: AsyncSession = Depends(get_db_session)):
     stmt = select(Timer).order_by(Timer.fire_at.asc())
     result = await db.execute(stmt)
-    all_timers = result.scalars().all()
-    return all_timers
+    return result.scalars().all()
 
 @router.get("/run/{run_id}", response_model=List[TimerDTO])
 async def list_timers_for_run(run_id: str, db: AsyncSession = Depends(get_db_session)):
@@ -53,10 +60,10 @@ async def list_timers_for_run(run_id: str, db: AsyncSession = Depends(get_db_ses
 @router.get("/{timer_id}", response_model=TimerDTO)
 async def get_timer(timer_id: str, db: AsyncSession = Depends(get_db_session)):
     repo = TimerRepository(db)
-    t = await repo.get_by_id(timer_id)
-    if not t:
+    timer = await repo.get_by_id(timer_id)
+    if not timer:
         raise HTTPException(status_code=404, detail="Timer not found")
-    return t
+    return timer
 
 @router.post("/{timer_id}/cancel")
 async def cancel_timer(timer_id: str, db: AsyncSession = Depends(get_db_session)):

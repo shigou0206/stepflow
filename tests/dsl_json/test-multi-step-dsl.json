@@ -1,0 +1,35 @@
+{
+    "StartAt": "StepA",
+    "States": {
+      "StepA": {
+        "Type": "Task",
+        "Resource": "HttpTool",
+        "Parameters": {
+          "url": "https://httpbin.org/get",
+          "method": "GET",
+          "parse_json": true
+        },
+        "ResultExpr": "$.json.url",
+        "OutputExpr": "$",
+        "Next": "StepB"
+      },
+      "StepB": {
+        "Type": "Pass",
+        "InputExpr": "$",
+        "Result": "Preparing to execute",
+        "ResultPath": "$.message",
+        "OutputExpr": "$",
+        "Next": "StepC"
+      },
+      "StepC": {
+        "Type": "Task",
+        "Resource": "ShellTool",
+        "Parameters": {
+          "command": "echo 'Final step'",
+          "timeout": 5
+        },
+        "ResultExpr": "$.stdout",
+        "End": true
+      }
+    }
+  }

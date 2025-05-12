@@ -96,6 +96,7 @@ class Timer(Base):
     fire_at = Column(DateTime, nullable=False)
     status = Column(String(50), nullable=False)
     version = Column(Integer, nullable=False, server_default=text("1"))
+    state_name = Column(String(128), nullable=False)
 
 
 # -----------------------
