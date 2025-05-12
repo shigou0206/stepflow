@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 from datetime import datetime
-import uuid
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from stepflow.persistence.database import get_db_session
 from stepflow.persistence.models import Timer
@@ -17,7 +18,7 @@ class TimerDTO(BaseModel):
     shard_id: int
     fire_at: datetime
     status: str
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 class ScheduleTimerRequest(BaseModel):
@@ -26,10 +27,7 @@ class ScheduleTimerRequest(BaseModel):
     fire_at: datetime
 
 @router.post("/", response_model=TimerDTO)
-async def schedule_timer(req: ScheduleTimerRequest, db=Depends(get_db_session)):
-    """
-    创建一个定时器 (scheduled)
-    """
+async def schedule_timer(req: ScheduleTimerRequest, db: AsyncSession = Depends(get_db_session)):
     repo = TimerRepository(db)
     svc = TimerService(repo)
     t = await svc.schedule_timer(
@@ -40,29 +38,20 @@ async def schedule_timer(req: ScheduleTimerRequest, db=Depends(get_db_session)):
     return t
 
 @router.get("/", response_model=List[TimerDTO])
-async def list_all_timers(db=Depends(get_db_session)):
-    """
-    列出所有定时器 (仅测试/调试用途).
-    """
-    repo = TimerRepository(db)
-    all_timers = db.query(Timer).all()  # or if you have async method: await repo.list_all()
+async def list_all_timers(db: AsyncSession = Depends(get_db_session)):
+    stmt = select(Timer).order_by(Timer.fire_at.asc())
+    result = await db.execute(stmt)
+    all_timers = result.scalars().all()
     return all_timers
 
 @router.get("/run/{run_id}", response_model=List[TimerDTO])
-async def list_timers_for_run(run_id: str, db=Depends(get_db_session)):
-    """
-    列出某个 workflow_executions 对应的全部定时器
-    """
+async def list_timers_for_run(run_id: str, db: AsyncSession = Depends(get_db_session)):
     repo = TimerRepository(db)
     svc = TimerService(repo)
-    timers = await svc.list_timers_for_run(run_id)
-    return timers
+    return await svc.list_timers_for_run(run_id)
 
 @router.get("/{timer_id}", response_model=TimerDTO)
-async def get_timer(timer_id: str, db=Depends(get_db_session)):
-    """
-    查看单个定时器详情
-    """
+async def get_timer(timer_id: str, db: AsyncSession = Depends(get_db_session)):
     repo = TimerRepository(db)
     t = await repo.get_by_id(timer_id)
     if not t:
@@ -70,39 +59,28 @@ async def get_timer(timer_id: str, db=Depends(get_db_session)):
     return t
 
 @router.post("/{timer_id}/cancel")
-async def cancel_timer(timer_id: str, db=Depends(get_db_session)):
-    """
-    取消一个还未触发的定时器
-    """
+async def cancel_timer(timer_id: str, db: AsyncSession = Depends(get_db_session)):
     repo = TimerRepository(db)
     svc = TimerService(repo)
     ok = await svc.cancel_timer(timer_id)
     if not ok:
         raise HTTPException(status_code=400, detail="Cannot cancel timer.")
-    return {"status":"ok","message":f"Timer {timer_id} canceled"}
+    return {"status": "ok", "message": f"Timer {timer_id} canceled"}
 
 @router.post("/{timer_id}/fire")
-async def fire_timer(timer_id: str, db=Depends(get_db_session)):
-    """
-    手动标记定时器为 fired, 用于测试
-    (实际需后续 Engine 处理, e.g. advance_workflow)
-    """
+async def fire_timer(timer_id: str, db: AsyncSession = Depends(get_db_session)):
     repo = TimerRepository(db)
     svc = TimerService(repo)
     ok = await svc.fire_timer(timer_id)
     if not ok:
         raise HTTPException(status_code=400, detail="Cannot fire timer.")
-    # 可能这里要再调用: advance_workflow(run_id) -> ...
-    return {"status":"ok","message":f"Timer {timer_id} fired"}
+    return {"status": "ok", "message": f"Timer {timer_id} fired"}
 
 @router.delete("/{timer_id}")
-async def delete_timer(timer_id: str, db=Depends(get_db_session)):
-    """
-    物理删除定时器(测试用途)
-    """
+async def delete_timer(timer_id: str, db: AsyncSession = Depends(get_db_session)):
     repo = TimerRepository(db)
     svc = TimerService(repo)
     ok = await svc.delete_timer(timer_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Timer not found or cannot delete")
-    return {"status":"ok","message":f"Timer {timer_id} deleted"}
+    return {"status": "ok", "message": f"Timer {timer_id} deleted"}

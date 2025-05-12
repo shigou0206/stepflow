@@ -1,14 +1,23 @@
-from fastapi import APIRouter, Depends, HTTPException
-from typing import List
+from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from stepflow.persistence.database import get_db_session
 from stepflow.persistence.models import WorkflowEvent
 from stepflow.persistence.repositories.workflow_event_repository import WorkflowEventRepository
 from stepflow.service.workflow_event_service import WorkflowEventService
 
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
 router = APIRouter(prefix="/workflow_events", tags=["workflow_events"])
+
+# ----------- DTOs & Request Models -----------
 
 class RecordEventRequest(BaseModel):
     run_id: str
@@ -27,49 +36,67 @@ class WorkflowEventDTO(BaseModel):
     attributes: str
     archived: bool
     timestamp: datetime
-    
+
     model_config = ConfigDict(from_attributes=True)
 
-@router.get("/", response_model=List[WorkflowEventDTO])
-async def list_all_events(db=Depends(get_db_session)):
-    """
-    列出所有事件(仅测试/调试用途).
-    生产中可加过滤/分页.
-    """
-    repo = WorkflowEventRepository(db)
-    # 需要你的 repo 有 list_all() 之类异步方法
-    # 若无可先 .all()
-    # 这里为简化，假设 synchronous
-    events = db.query(WorkflowEvent).order_by(WorkflowEvent.id.asc()).all()
-    return events
+# ----------- Helper response wrapper -----------
 
-@router.get("/run/{run_id}", response_model=List[WorkflowEventDTO])
-async def list_events_for_run(run_id: str, db=Depends(get_db_session)):
+def standard_response(
+    status: str = "ok",
+    data: Optional[Any] = None,
+    message: Optional[str] = None
+) -> Dict[str, Any]:
+    return {
+        "status": status,
+        "data": data,
+        "message": message
+    }
+
+# ----------- Endpoints -----------
+
+@router.get("/", response_model=Dict[str, Any])
+async def list_all_events(
+    db: AsyncSession = Depends(get_db_session),
+    limit: int = Query(100, le=1000),
+    offset: int = Query(0)
+):
+    """
+    列出所有事件（测试用途）。支持分页参数。
+    """
+    stmt = select(WorkflowEvent).order_by(WorkflowEvent.id.asc()).limit(limit).offset(offset)
+    result = await db.execute(stmt)
+    events = result.scalars().all()
+    return standard_response(data=[WorkflowEventDTO.model_validate(e) for e in events])
+
+
+@router.get("/run/{run_id}", response_model=Dict[str, Any])
+async def list_events_for_run(run_id: str, db: AsyncSession = Depends(get_db_session)):
     """
     列出指定 run_id 的全部事件
     """
     repo = WorkflowEventRepository(db)
     svc = WorkflowEventService(repo)
-    evts = await svc.list_events_for_run(run_id)
-    return evts
+    events = await svc.list_events_for_run(run_id)
+    return standard_response(data=[WorkflowEventDTO.model_validate(e) for e in events])
 
-@router.get("/{db_id}", response_model=WorkflowEventDTO)
-async def get_event(db_id: int, db=Depends(get_db_session)):
+
+@router.get("/{db_id}", response_model=Dict[str, Any])
+async def get_event(db_id: int, db: AsyncSession = Depends(get_db_session)):
     """
-    根据DB主键id获取事件
+    根据 DB 主键 id 获取事件
     """
     repo = WorkflowEventRepository(db)
     svc = WorkflowEventService(repo)
     evt = await svc.get_event(db_id)
     if not evt:
         raise HTTPException(status_code=404, detail="Event not found")
-    return evt
+    return standard_response(data=WorkflowEventDTO.model_validate(evt))
 
-@router.post("/", response_model=WorkflowEventDTO)
-async def record_event(req: RecordEventRequest, db=Depends(get_db_session)):
+
+@router.post("/", response_model=Dict[str, Any])
+async def record_event(req: RecordEventRequest, db: AsyncSession = Depends(get_db_session)):
     """
-    仅调试用途: 手动创建一条 WorkflowEvent
-    正常应由 Engine/Worker 来自动写入
+    手动记录事件（调试用途）
     """
     repo = WorkflowEventRepository(db)
     svc = WorkflowEventService(repo)
@@ -81,22 +108,24 @@ async def record_event(req: RecordEventRequest, db=Depends(get_db_session)):
         attributes=req.attributes,
         archived=req.archived
     )
-    return new_evt
+    return standard_response(data=WorkflowEventDTO.model_validate(new_evt), message="Event recorded")
 
-@router.post("/{db_id}/archive")
-async def archive_event(db_id: int, db=Depends(get_db_session)):
+
+@router.post("/{db_id}/archive", response_model=Dict[str, Any])
+async def archive_event(db_id: int, db: AsyncSession = Depends(get_db_session)):
     """
-    将某条事件 archived=True
+    将某条事件标记为 archived=True
     """
     repo = WorkflowEventRepository(db)
     svc = WorkflowEventService(repo)
     ok = await svc.archive_event(db_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Event not found or cannot archive")
-    return {"status":"ok","message":f"Event {db_id} archived"}
+    return standard_response(message=f"Event {db_id} archived")
 
-@router.delete("/{db_id}")
-async def delete_event(db_id: int, db=Depends(get_db_session)):
+
+@router.delete("/{db_id}", response_model=Dict[str, Any])
+async def delete_event(db_id: int, db: AsyncSession = Depends(get_db_session)):
     """
     物理删除事件
     """
@@ -105,4 +134,4 @@ async def delete_event(db_id: int, db=Depends(get_db_session)):
     ok = await svc.delete_event(db_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Event not found or cannot delete")
-    return {"status":"ok","message":f"Event {db_id} deleted"}
+    return standard_response(message=f"Event {db_id} deleted")

@@ -46,3 +46,6 @@ def apply_output_expr(output_data: Any, output_expr: Optional[str]) -> Any:
     Final output shaping for passing to the next state.
     """
     return evaluate_expr(output_data, output_expr)
+
+def extract_json_path(data: dict, path: str) -> Any:
+    return evaluate_expr(data, path)

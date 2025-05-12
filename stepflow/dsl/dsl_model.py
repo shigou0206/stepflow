@@ -1,4 +1,3 @@
-
 from typing import Dict, List, Optional, Union, Literal, Annotated
 from pydantic import BaseModel, Field, model_validator, field_validator, ValidationInfo, TypeAdapter, ConfigDict
 
@@ -94,10 +93,16 @@ class WaitState(BaseState):
             raise ValueError("WaitState cannot define both next and end")
         return self
 
+class ChoiceLogic(DSLBase):
+    and_: Optional[List["ChoiceLogic"]] = Field(None, alias="And")
+    or_: Optional[List["ChoiceLogic"]] = Field(None, alias="Or")
+    not_: Optional["ChoiceLogic"] = Field(None, alias="Not")
+    variable: Optional[str] = None
+    operator: Optional[str] = None
+    value: Optional[Union[str, int, float, bool]] = None
+
 class ChoiceRule(DSLBase):
-    variable: str
-    operator: str
-    value: Union[str, int, float, bool]
+    condition: ChoiceLogic
     next: str
 
 class ChoiceState(BaseState):
@@ -195,3 +200,6 @@ class WorkflowDSL(DSLBase):
     def parse_states(cls, raw: dict, info: ValidationInfo):
         adapter = TypeAdapter(State)
         return {k: adapter.validate_python(v) for k, v in raw.items()}
+
+# allow recursive references
+ChoiceLogic.model_rebuild()
