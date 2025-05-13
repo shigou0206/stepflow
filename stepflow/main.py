@@ -1,68 +1,93 @@
-from fastapi import FastAPI
-import uvicorn
+from __future__ import annotations
+
+"""FastAPI entrypoint with ActivityWorker + TimerWorker support."""
+
 import asyncio
-from contextlib import asynccontextmanager
-from fastapi.middleware.cors import CORSMiddleware
 import logging
 import os
+from contextlib import asynccontextmanager
 
-# 导入各个路由
+import uvicorn
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+# ──────────────────────── routers ─────────────────────────
 from stepflow.interfaces.api.workflow_visibility_endpoints import router as vis_router
 from stepflow.interfaces.api.workflow_execution_endpoints import router as exec_router
 from stepflow.interfaces.api.workflow_template_endpoints import router as template_router
 from stepflow.interfaces.api.workflow_event_endpoints import router as event_router
 from stepflow.interfaces.api.activity_endpoints import router as activity_router
 from stepflow.interfaces.api.timer_endpoints import router as timer_router
-from stepflow.worker.activity_worker import run_activity_worker
-# 导入 WebSocket 路由
 from stepflow.interfaces.websocket.routes import router as websocket_router
 
-# 设置 logger
+# workers
+from stepflow.worker.activity_worker import run_activity_worker
+from stepflow.worker.timer_worker import run_timer_loop
 
+# ──────────────────────── logging ──────────────────────────
+# logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO,                      # ← 必须 DEBUG
+    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
+# ─────────────────────── worker config ─────────────────────
+NUM_ACTIVITY_WORKERS = int(os.getenv("NUM_ACTIVITY_WORKERS", "2"))
+NUM_TIMER_WORKERS = int(os.getenv("NUM_TIMER_WORKERS", "1"))
+TIMER_POLL_INTERVAL = float(os.getenv("TIMER_POLL_INTERVAL", "1.0"))
 
-# Define lifespan context manager
+# ─────────────────── lifespan context manager ──────────────
+
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    # 初始化数据库
+async def lifespan(app: FastAPI):  # type: ignore[valid-type]
+    """Init DB, start workers on startup; cancel on shutdown."""
+
+    # 1️⃣ 创建数据库 schema（仅首次）
     from stepflow.persistence.database import Base, async_engine
+
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
-    # 启动活动工作器
-    workers = await start_activity_workers()
-    app.state.workers = workers
-    logger.info(f"已启动 {NUM_WORKERS} 个活动工作器")
-    
-    yield  # FastAPI 运行点
-    
-    # 关闭时停止工作器
-    if hasattr(app.state, "workers"):
-        for worker in app.state.workers:
-            worker.cancel()
-        
-        # 等待所有工作器正常关闭
-        await asyncio.gather(*app.state.workers, return_exceptions=True)
-        logger.info("所有活动工作器已关闭")
 
-# Create app with lifespan
-app = FastAPI(title="StepFlow API", description="工作流执行引擎 API", lifespan=lifespan)
+    # 2️⃣ 启动后台 worker
+    workers: list[asyncio.Task] = []
 
-# 配置 CORS
+    # Activity workers
+    for _ in range(NUM_ACTIVITY_WORKERS):
+        workers.append(asyncio.create_task(run_activity_worker()))
+    logger.info("ActivityWorkers started: %s", NUM_ACTIVITY_WORKERS)
+
+    # Timer workers (each runs its own poll loop; shard_id = idx)
+    for idx in range(NUM_TIMER_WORKERS):
+        task = asyncio.create_task(
+            run_timer_loop(interval_seconds=TIMER_POLL_INTERVAL, shard_id=idx)
+        )
+        workers.append(task)
+    logger.info("TimerWorkers started: %s", NUM_TIMER_WORKERS)
+
+    app.state.workers = workers  # type: ignore[attr-defined]
+    try:
+        yield
+    finally:
+        for w in workers:
+            w.cancel()
+        await asyncio.gather(*workers, return_exceptions=True)
+        logger.info("All workers shut down.")
+
+# ───────────────────────── FastAPI app ─────────────────────
+
+app = FastAPI(title="StepFlow API", description="Workflow engine API", lifespan=lifespan)
+
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 允许所有来源，生产环境应该限制
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include routers for various endpoints
+# routers
 app.include_router(vis_router)
 app.include_router(exec_router)
 app.include_router(template_router)
@@ -71,23 +96,12 @@ app.include_router(activity_router)
 app.include_router(timer_router)
 app.include_router(websocket_router)
 
-# 配置工作器数量
-NUM_WORKERS = int(os.environ.get("NUM_ACTIVITY_WORKERS", "2"))
-
-# 创建工作器启动函数
-async def start_activity_workers():
-    """启动多个活动工作器"""
-    workers = []
-    for i in range(NUM_WORKERS):
-        worker = asyncio.create_task(run_activity_worker())
-        workers.append(worker)
-    
-    return workers
 
 @app.get("/")
-async def root():
-    """API 健康检查"""
+async def root():  # pragma: no cover
     return {"message": "StepFlow API is running"}
 
+
+# ─────────────────────────── run uvicorn ────────────────────
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)

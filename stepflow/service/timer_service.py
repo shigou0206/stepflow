@@ -1,72 +1,107 @@
+from __future__ import annotations
+
+"""Timer service layer – high-level business logic (v3).
+Fixes SQLite tzinfo issue by normalising *all* datetimes to
+**UTC-naive** using `to_utc_naive` utility.
+"""
+
 import uuid
 from datetime import datetime
 from typing import List, Optional
+
 from stepflow.persistence.models import Timer
-from stepflow.persistence.repositories.timer_repository import TimerRepository
+from stepflow.persistence.repositories.timer_repository import (
+    TimerRepository,
+    TimerStatus,
+)
+from stepflow.utils.timefmt import to_utc_naive   # ← NEW
+
+__all__ = ["TimerService"]
+
 
 class TimerService:
+    """Orchestration helpers built on :class:`TimerRepository`."""
+
     def __init__(self, repo: TimerRepository):
         self.repo = repo
 
-    async def schedule_timer(self, run_id: str, state_name: str, shard_id: int, fire_at: datetime) -> Timer:
-        """
-        创建一个新的定时器, 初始状态 scheduled。
-        如果 (run_id, state_name) 已存在 scheduled/fired 状态，则跳过创建。
-        """
+    # ─────────────────────────── CRUD ───────────────────────────────
+
+    async def schedule_timer(
+        self,
+        *,
+        run_id: str,
+        state_name: str,
+        shard_id: int,
+        fire_at: datetime,
+    ) -> Timer:
+        """Create new timer or return existing (idempotent)."""
+        fire_at = to_utc_naive(fire_at)                 # NORMALISE
+
         existing = await self.repo.get_by_run_id_and_state(run_id, state_name)
         if existing:
             return existing
 
-        timer_id = str(uuid.uuid4())
         timer = Timer(
-            timer_id=timer_id,
+            timer_id=str(uuid.uuid4()),
             run_id=run_id,
             state_name=state_name,
             shard_id=shard_id,
             fire_at=fire_at,
-            status="scheduled",
+            status=TimerStatus.SCHEDULED,
         )
-        return await self.repo.create(timer)
+        await self.repo.create(timer)
+        await self.repo.session.commit()
+        return timer
+
+    async def cancel_timer(self, timer_id: str) -> bool:
+        timer = await self.repo.get_by_id(timer_id)
+        if not timer or timer.status != TimerStatus.SCHEDULED:
+            return False
+        timer.status = TimerStatus.CANCELED
+        await self.repo.update(timer)
+        await self.repo.session.commit()
+        return True
+
+    async def fire_timer(self, timer_id: str) -> bool:
+        timer = await self.repo.get_by_id(timer_id)
+        if not timer or timer.status != TimerStatus.SCHEDULED:
+            return False
+        timer.status = TimerStatus.FIRED
+        await self.repo.update(timer)
+        await self.repo.session.commit()
+        return True
+
+    async def delete_timer(self, timer_id: str) -> bool:
+        deleted = await self.repo.delete(timer_id)
+        if deleted:
+            await self.repo.session.commit()
+        return deleted
+
+    # ─────────────────────────── queries ────────────────────────────
+
+    async def timers_for_run(self, run_id: str) -> List[Timer]:
+        return await self.repo.list_by_run_id(run_id)
+
+    async def find_due_timers(
+        self,
+        *,
+        cutoff: datetime,
+        limit: int = 100,
+        shard_id: int | None = None,
+    ) -> List[Timer]:
+        return await self.repo.list_scheduled_before(
+            cutoff_time=to_utc_naive(cutoff),         # NORMALISE
+            limit=limit,
+            shard_id=shard_id,
+        )
+
+    # ───────────────────── compatibility shim ──────────────────────
 
     async def get_by_run_id_and_state(self, run_id: str, state_name: str) -> Optional[Timer]:
         return await self.repo.get_by_run_id_and_state(run_id, state_name)
 
-    async def cancel_timer(self, timer_id: str) -> bool:
-        """
-        将定时器状态改为 canceled（如果还未触发）
-        """
-        timer = await self.repo.get_by_id(timer_id)
-        if not timer or timer.status != "scheduled":
-            return False
-        timer.status = "canceled"
-        await self.repo.update(timer)
-        return True
+    # ───────────────────────── concurrency ──────────────────────────
 
-    async def fire_timer(self, timer_id: str) -> bool:
-        """
-        将定时器标记为 fired（若还处于 scheduled 状态）
-        """
-        timer = await self.repo.get_by_id(timer_id)
-        if not timer or timer.status != "scheduled":
-            return False
-        timer.status = "fired"
-        await self.repo.update(timer)
-        return True
-
-    async def delete_timer(self, timer_id: str) -> bool:
-        """
-        物理删除定时器
-        """
-        return await self.repo.delete(timer_id)
-
-    async def list_timers_for_run(self, run_id: str) -> List[Timer]:
-        """
-        获取某个 workflow 实例的所有定时器
-        """
-        return await self.repo.list_by_run_id(run_id)
-
-    async def find_due_timers(self, cutoff_time: datetime) -> List[Timer]:
-        """
-        查找 fire_at <= cutoff_time 且 status 为 scheduled 的定时器
-        """
-        return await self.repo.list_scheduled_before(cutoff_time)
+    async def try_fire_and_lock(self, timer: Timer, *, now: datetime) -> bool:
+        return await self.repo.mark_fired_if_due(timer.timer_id, to_utc_naive(now))
