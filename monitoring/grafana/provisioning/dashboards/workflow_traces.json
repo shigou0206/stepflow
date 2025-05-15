@@ -1,0 +1,1 @@
+{"id": null, "title": "StepFlow Traces", "timezone": "browser", "panels": [{"type": "tempo-search", "title": "Search Traces", "datasource": "Tempo"}], "schemaVersion": 37, "version": 1}

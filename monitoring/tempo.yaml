@@ -1,0 +1,12 @@
+
+auth_enabled: false
+receiver:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+storage:
+  trace:
+    backend: local
+    local:
+      path: /tmp/tempo

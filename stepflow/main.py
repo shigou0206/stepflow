@@ -10,6 +10,9 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from stepflow.config import ENABLE_PROMETHEUS, ENABLE_OTEL
+from stepflow.observability.prometheus_metrics import router as metrics_router
+from stepflow.observability.otel_tracing import init_tracer
 
 # ──────────────────────── routers ─────────────────────────
 from stepflow.interfaces.api.workflow_visibility_endpoints import router as vis_router
@@ -77,6 +80,13 @@ async def lifespan(app: FastAPI):  # type: ignore[valid-type]
 # ───────────────────────── FastAPI app ─────────────────────
 
 app = FastAPI(title="StepFlow API", description="Workflow engine API", lifespan=lifespan)
+
+# Prometheus / OTEL 初始化
+if ENABLE_OTEL:
+    init_tracer("stepflow")
+
+if ENABLE_PROMETHEUS:
+    app.include_router(metrics_router)
 
 # CORS
 app.add_middleware(

@@ -1,0 +1,1 @@
+{"id": null, "title": "StepFlow Metrics", "timezone": "browser", "panels": [{"type": "graph", "title": "Workflow Started / Node Success / Fail", "targets": [{"expr": "workflow_started_total", "legendFormat": "started"}, {"expr": "node_success_total", "legendFormat": "success"}, {"expr": "node_fail_total", "legendFormat": "fail"}]}], "schemaVersion": 37, "version": 1}
